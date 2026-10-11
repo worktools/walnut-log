@@ -67,7 +67,7 @@ module.exports = {
 and run:
 
 ```bash
-pm2 start ecosystem.config.js
+pm2 start ecosystem.config.js --env production
 ```
 
 ### Workflow
