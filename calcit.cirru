@@ -720,14 +720,25 @@
                 added $ app.updater/updater registered (Op :issue/add |question) 1 |i1 2
                 session $ .unwrap $ get (:sessions added) 1
                 view $ app.twig.container/twig-container added session $ []
-                changes $ recollect.diff/diff-twig nil view $ {} (:key :id)
-                packet $ ServerPacket :patch changes
-                decoded $ decode-map-as
-                  parse-cirru-edn (format-cirru-edn packet) wire-classes
-                  , 'app.schema/ServerPacket
-              match decoded $
-                :patch received
-                assert= view $ recollect.patch/patch-twig nil received
+                receive $ fn (base packet)
+                  hint-fn $ {}
+                    :args $ [] 'Dynamic 'app.schema/ServerPacket
+                    :return 'recollect.patch/PatchResult
+                  match
+                    decode-map-as
+                      parse-cirru-edn (format-cirru-edn packet) wire-classes
+                      , 'app.schema/ServerPacket
+                    (:patch changes) (recollect.patch/try-patch-twig base changes)
+                initial $ ServerPacket :patch $ recollect.diff/diff-twig nil view
+                  {} $ :key :id
+                next $ struct-with view (:color |green) (:reel-length 1)
+                  :router $ struct-with (:router view) (:name :profile)
+                    :data $ Page :profile $ {}
+                      1 $ Option :some |demo
+                delta $ ServerPacket :patch $ recollect.diff/diff-twig view next
+                  {} $ :key :id
+              assert= (recollect.patch/PatchResult :ok view) (receive nil initial)
+              assert= (recollect.patch/PatchResult :ok next) (receive view delta)
             :tags $ #{} :server
         'Session $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct Session
