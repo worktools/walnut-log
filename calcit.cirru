@@ -626,6 +626,19 @@
         :code $ quote $ ns app.config
     'app.schema $ %{} 'FileEntry
       :defs $ {}
+        'AddLog $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct AddLog (:issue-id 'String) (:content 'String)
+          :examples $ []
+          :schema $ :: 'StructDef
+        'ClientStore $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct ClientStore (:logged-in? 'Bool) (:session 'app.schema/Session)
+            :user $ :: 'Option 'app.schema/UserView
+            :router 'app.schema/RouterView
+            :count 'Number
+            :color 'String
+            :reel-length 'Number
+          :examples $ []
+          :schema $ :: 'StructDef
         'Db $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct Db
             :sessions $ :: 'Map 'Number 'app.schema/Session
@@ -643,6 +656,12 @@
             :logs $ :: 'Map 'String 'app.schema/Log
           :examples $ []
           :schema $ :: 'StructDef
+        'IssueEdit $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct IssueEdit (:id 'String)
+            :content $ :: 'Option 'String
+            :desc $ :: 'Option 'String
+          :examples $ []
+          :schema $ :: 'StructDef
         'Log $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct Log (:id 'String) (:content 'String)
             :user-id $ :: 'Option 'String
@@ -650,10 +669,31 @@
             :solution? 'Bool
           :examples $ []
           :schema $ :: 'StructDef
+        'LogEdit $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct LogEdit (:issue-id 'String) (:id 'String) (:content 'String)
+          :examples $ []
+          :schema $ :: 'StructDef
+        'LogRef $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct LogRef (:issue-id 'String) (:id 'String)
+          :examples $ []
+          :schema $ :: 'StructDef
         'Message $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct Message (:id 'String) (:text 'String)
           :examples $ []
           :schema $ :: 'StructDef
+        'Op $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defenum Op (:session/connect) (:session/disconnect) (:session/remove-message 'String) (:user/log-in 'String 'String) (:user/sign-up 'String 'String) (:user/log-out) (:router/change 'app.schema/Router) (:issue/add 'String) (:issue/del 'String) (:issue/update 'app.schema/IssueEdit) (:issue/toggle-solved 'String) (:issue/touch 'String) (:issue/add-log 'app.schema/AddLog) (:issue/update-log 'app.schema/LogEdit) (:issue/del-log 'app.schema/LogRef) (:effect/persist) (:reel/reset) (:reel/merge)
+          :examples $ []
+          :schema $ :: 'EnumDef
+        'Page $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defenum Page
+            :home $ :: 'Map 'String 'app.schema/Issue
+            :archived $ :: 'Map 'String 'app.schema/Issue
+            :issue $ :: 'Option 'app.schema/Issue
+            :profile $ :: 'Map 'Number $ :: 'Option 'String
+            :unknown
+          :examples $ []
+          :schema $ :: 'EnumDef
         'Router $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct Router (:name 'Tag)
             :title $ :: 'Option 'String
@@ -661,6 +701,34 @@
             :router $ :: 'Option 'app.schema/Router
           :examples $ []
           :schema $ :: 'StructDef
+        'RouterView $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct RouterView (:name 'Tag)
+            :title $ :: 'Option 'String
+            :data 'app.schema/Page
+            :router $ :: 'Option 'app.schema/Router
+          :examples $ []
+          :schema $ :: 'StructDef
+        'ServerPacket $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defenum ServerPacket
+            :patch $ :: 'List 'recollect.schema/change-op
+          :examples $ []
+          :schema $ :: 'EnumDef
+          :tests $ [] $ %{} 'TestEntry (:name |roundtrips-projected-patch-payload)
+            :code $ quote $ let
+                connected $ app.updater/updater database (Op :session/connect) 1 |c1 0
+                registered $ app.updater/updater connected (Op :user/sign-up |demo |pw) 1 |u1 1
+                added $ app.updater/updater registered (Op :issue/add |question) 1 |i1 2
+                session $ .unwrap $ get (:sessions added) 1
+                view $ app.twig.container/twig-container added session $ []
+                changes $ recollect.diff/diff-twig nil view $ {} (:key :id)
+                packet $ ServerPacket :patch changes
+                decoded $ decode-map-as
+                  parse-cirru-edn (format-cirru-edn packet) wire-classes
+                  , 'app.schema/ServerPacket
+              match decoded $
+                :patch received
+                assert= view $ recollect.patch/patch-twig nil received
+            :tags $ #{} :server
         'Session $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct Session
             :id $ :: 'Option 'Number
@@ -676,6 +744,21 @@
             :avatar $ :: 'Option 'String
           :examples $ []
           :schema $ :: 'StructDef
+        'UserView $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct UserView (:id 'String) (:name 'String)
+            :nickname $ :: 'Option 'String
+            :avatar $ :: 'Option 'String
+          :examples $ []
+          :schema $ :: 'StructDef
+        'client-store $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ def client-store
+            ClientStore :logged-in? false :session session :user (Option :none) :router
+              RouterView :name :home :title (Option :none) :data
+                Page :home $ {}
+                , :router $ Option :none
+              , :count 0 :color | :reel-length 0
+          :examples $ []
+          :schema $ :: 'app.schema/ClientStore
         'database $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def database
             Db :sessions ({}) :users ({}) :issues $ {}
@@ -727,11 +810,78 @@
           :schema $ :: 'Fn $ {}
             :args $ [] 'Dynamic
             :return $ :: 'Result 'app.schema/Db 'String
+        'decode-op $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn decode-op (value)
+            try
+              if (enum? value)
+                do
+                  match (enum-definition value)
+                    (:none) nil
+                    (:some definition)
+                      when (not= definition Op)
+                        raise "|Expected Walnut Op or legacy anonymous operation"
+                  Result :ok $ match value
+                    (:session/connect) (Op :session/connect)
+                    (:session/disconnect) (Op :session/disconnect)
+                    (:session/remove-message data)
+                      Op :session/remove-message $ decode-map-as
+                        if (string? data) data $ .unwrap $ get (struct-input data) :id
+                        , 'String
+                    (:user/log-in username password)
+                      Op :user/log-in (decode-map-as username 'String) (decode-map-as password 'String)
+                    (:user/sign-up username password)
+                      Op :user/sign-up (decode-map-as username 'String) (decode-map-as password 'String)
+                    (:user/log-out) (Op :user/log-out)
+                    (:user/log-out data)
+                      do (decode-map-as data 'Nil) (Op :user/log-out)
+                    (:router/change data)
+                      Op :router/change $ decode-map-as (router-input data) 'app.schema/Router
+                    (:issue/add content)
+                      Op :issue/add $ if (nil? content) "|default content" $ decode-map-as content 'String
+                    (:issue/del id)
+                      Op :issue/del $ decode-map-as id 'String
+                    (:issue/update data)
+                      Op :issue/update $ decode-map-as (issue-edit-input data) 'app.schema/IssueEdit
+                    (:issue/toggle-solved id)
+                      Op :issue/toggle-solved $ decode-map-as id 'String
+                    (:issue/touch id)
+                      Op :issue/touch $ decode-map-as id 'String
+                    (:issue/add-log data)
+                      Op :issue/add-log $ decode-map-as (struct-input data) 'app.schema/AddLog
+                    (:issue/update-log data)
+                      Op :issue/update-log $ decode-map-as (struct-input data) 'app.schema/LogEdit
+                    (:issue/del-log data)
+                      Op :issue/del-log $ decode-map-as (struct-input data) 'app.schema/LogRef
+                    (:effect/persist) (Op :effect/persist)
+                    (:reel/reset) (Op :reel/reset)
+                    (:reel/merge) (Op :reel/merge)
+                    _ $ raise "|Unknown Walnut operation"
+                Result :err "|Expected an operation enum"
+              fn (detail)
+                hint-fn $ {}
+                  :args $ [] 'String
+                  :return $ :: 'Result 'app.schema/Op 'String
+                Result :err detail
+          :examples $ []
+          :schema $ :: 'Fn $ {}
+            :args $ [] 'Dynamic
+            :return $ :: 'Result 'app.schema/Op 'String
         'issue $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def issue
             Issue :id | :content | :author-id (Option :none) :created-time 0 :touched-time 0 :desc | :solved? false :logs $ {}
           :examples $ []
           :schema $ :: 'app.schema/Issue
+        'issue-edit-input $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn issue-edit-input (value)
+            let
+                source $ struct-input value
+              assoc
+                assoc source :content $ optional-input $ get source :content
+                , :desc $ optional-input $ get source :desc
+          :examples $ []
+          :schema $ :: 'Fn $ {}
+            :args $ [] 'Dynamic
+            :return $ :: 'Map 'Tag 'Dynamic
         'issue-input $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn issue-input (value)
             let
@@ -778,8 +928,7 @@
         'parse-database $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn parse-database (text)
             try
-              decode-database $ parse-cirru-edn text $ {} (:Option Option) (:Db database) (:Session session) (:Router router) (:User user) (:Issue issue) (:Log log)
-                :Message $ Message :id | :text |
+              decode-database $ parse-cirru-edn text wire-classes
               fn (detail)
                 hint-fn $ {}
                   :args $ [] 'String
@@ -841,6 +990,31 @@
                 (:err detail)
                   assert= true $ .includes? detail |password
               :tags $ #{} :server
+        'parse-op $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn parse-op (text)
+            try
+              decode-op $ parse-cirru-edn text wire-classes
+              fn (detail)
+                hint-fn $ {}
+                  :args $ [] 'String
+                  :return $ :: 'Result 'app.schema/Op 'String
+                Result :err detail
+          :examples $ []
+          :schema $ :: 'Fn $ {}
+            :args $ [] 'String
+            :return $ :: 'Result 'app.schema/Op 'String
+          :tests $ [] $ %{} 'TestEntry (:name |legacy-and-owned-issue-operations)
+            :code $ quote $ let
+                edit $ IssueEdit :id |i1 :content (Option :some |changed) :desc $ Option :none
+                op $ Op :issue/update edit
+              assert= (Result :ok op)
+                parse-op "|:: :issue/update $ {} (:id |i1) (:content |changed)"
+              assert= (Result :ok op)
+                parse-op $ format-cirru-edn op
+              assert=
+                Result :ok $ Op :issue/add "|default content"
+                parse-op "|:: :issue/add nil"
+            :tags $ #{} :server
         'router $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def router
             Router :name :home :title (Option :none) :data (Option :none) :router $ Option :none
@@ -919,6 +1093,22 @@
           :schema $ :: 'Fn $ {}
             :args $ [] 'Dynamic
             :return $ :: 'Map 'Tag 'Dynamic
+        'wire-classes $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ def wire-classes
+            {} (:Option Option) (:Op Op) (:Db database) (:Session session) (:Router router) (:User user) (:Issue issue) (:Log log)
+              :Message $ Message :id | :text |
+              :IssueEdit $ IssueEdit :id | :content (Option :none) :desc $ Option :none
+              :AddLog $ AddLog :issue-id | :content |
+              :LogRef $ LogRef :issue-id | :id |
+              :LogEdit $ LogEdit :issue-id | :id | :content |
+              :UserView $ UserView :id | :name | :nickname (Option :none) :avatar $ Option :none
+              :Page Page
+              :RouterView $ :router client-store
+              :ClientStore client-store
+              :ServerPacket ServerPacket
+              :change-op recollect.schema/change-op
+          :examples $ []
+          :schema $ :: 'Map 'Tag 'Dynamic
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.schema
     'app.server $ %{} 'FileEntry
@@ -926,7 +1116,7 @@
         '*client-caches $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defatom *client-caches ({})
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Ref $ :: 'Map 'Number 'app.schema/ClientStore
         '*initial-db $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defatom *initial-db
             if (path-exists? storage-file)
@@ -942,22 +1132,29 @@
         '*reader-reel $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defatom *reader-reel @*reel
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Ref $ :: 'cumulo-reel.core/ReelState 'app.schema/Db
         '*reel $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defatom *reel
-            merge reel-schema $ {} (:base @*initial-db) (:db @*initial-db)
+            ReelState :base @*initial-db :db @*initial-db :records ([]) :merged? false
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Ref $ :: 'cumulo-reel.core/ReelState 'app.schema/Db
+        '*tasks $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defatom *tasks ([])
+          :examples $ []
+          :schema $ :: 'Ref $ :: 'List 'calcit.core/FfiTask
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (op sid)
             let
                 op-id $ generate-id!
-                op-time $ -> (get-time!) (.timestamp)
+                op-time $ get-timestamp $ get-time!
               if config/dev? $ println |Dispatch! op sid
-              if (= op :effect/persist) (persist-db!)
-                reset! *reel $ reel-reducer @*reel updater op sid op-id op-time config/dev?
+              match op
+                (:effect/persist) (persist-db!)
+                _ $ reset! *reel $ reel-reducer @*reel updater op sid op-id op-time config/dev?
+              , &unit
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'Unit)
+            :args $ [] 'app.schema/Op 'Number
         'get-backup-path! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn get-backup-path! ()
             let
@@ -981,65 +1178,118 @@
           :code $ quote $ defn main! ()
             println "|Running mode:" $ if config/dev? |dev |release
             let
-                p? $ get-env |port
-                port $ if (some? p?) (parse-float p?) (:port config/site)
-              run-server! port
+                port $ match (get-env |port)
+                  (:none) (:port config/site)
+                  (:some text)
+                    match (parse-float text)
+                      (:ok value) value
+                      (:err _)
+                        raise $ str "|Invalid port: " text
+              identity @*reader-reel
+              reset! *tasks $ [] (run-server! port) (set-interval! 200 render-loop!) (set-interval! 600000 persist-db!) (on-ctrl-c! on-exit!)
               println $ str "|Server started on port:" port
-            do (; "|init it before doing multi-threading") (identity @*reader-reel)
-            set-interval 200 $ fn () $ render-loop!
-            set-interval 600000 $ fn () $ persist-db!
-            on-control-c on-exit!
+            , &unit
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'Unit)
+            :args $ []
         'on-exit! $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn on-exit! () (persist-db!) (; println "|exit code is...") (quit! 0)
+          :code $ quote $ defn on-exit! () (stop-tasks!) (persist-db!) (quit! 0)
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'Unit)
+            :args $ []
         'persist-db! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn persist-db! ()
             let
-                file-content $ format-cirru-edn $ assoc (:db @*reel) :sessions ({})
+                file-content $ format-cirru-edn $ struct-with (:db @*reel)
+                  :sessions $ {}
                 storage-path storage-file
                 backup-path $ get-backup-path!
               check-write-file! storage-path file-content
               check-write-file! backup-path file-content
+              , &unit
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'Unit)
+            :args $ []
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! () (println "|Code updated..")
             if (not config/dev?) (raise "|reloading only happens in dev mode")
             clear-twig-caches!
-            reset! *reel $ refresh-reel @*reel @*initial-db updater
-            sync-clients! @*reader-reel
+            reset! *reel $ refresh-reel @*reel @*initial-db replay-updater
+            render-loop!
+            , &unit
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'Unit)
+            :args $ []
         'render-loop! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-loop! ()
-            when
-              not $ identical? @*reader-reel @*reel
-              reset! *reader-reel @*reel
-              sync-clients! @*reader-reel
+            let
+                snapshot @*reel
+              when
+                not $ identical? @*reader-reel snapshot
+                when (sync-clients! snapshot) (reset! *reader-reel snapshot)
+            , &unit
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'Unit)
+            :args $ []
+        'replay-updater $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn replay-updater (db op sid op-id op-time)
+            match (schema/decode-op op)
+              (:err detail)
+                raise $ str "|Invalid recorded operation: " detail
+              (:ok decoded)
+                updater db decoded (decode-map-as sid 'Number) (decode-map-as op-id 'String) (decode-map-as op-time 'Number)
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'app.schema/Db)
+            :args $ [] 'app.schema/Db 'Dynamic 'Dynamic 'Dynamic 'Dynamic
+          :tests $ [] $ %{} 'TestEntry (:name |replays-typed-business-records)
+            :code $ quote $ let
+                base schema/database
+                initial $ ReelState :base base :db base :records ([]) :merged? false
+                recorded $ reel-reducer initial updater (schema/Op :issue/add |question) 1 |i1 10 true
+                replayed $ refresh-reel recorded base replay-updater
+              assert= (:db recorded) (:db replayed)
+              assert= |question $ :content $ .unwrap
+                get
+                  :issues $ :db replayed
+                  , |i1
+            :tags $ #{} :server
         'run-server! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn run-server! (port)
-            wss-serve! (&{} :port port)
-              fn (data)
-                tag-match data
+            wss-serve!
+              {} $ :port port
+              fn (event)
+                hint-fn $ {}
+                  :args $ [] 'wss.core/WssEvent
+                  :return 'Unit
+                match event
                   (:connect sid)
                     do
-                      dispatch! (:: :session/connect) sid
+                      dispatch! (schema/Op :session/connect) sid
                       println "|New client."
-                  (:message sid msg)
-                    let
-                        action $ parse-cirru-edn msg
-                      dispatch! action sid
+                  (:message sid text)
+                    match (schema/parse-op text)
+                      (:ok op) (dispatch! op sid)
+                      (:err detail) (eprintln "|Rejected client operation:" detail)
                   (:disconnect sid)
                     do (println "|Client closed!")
-                      dispatch! (:: :session/disconnect) sid
-                  _ $ eprintln "|unknown data:" data
+                      dispatch! (schema/Op :session/disconnect) sid
+                  (:blob sid _) (eprintln "|Ignoring binary client packet:" sid)
+                , &unit
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'calcit.core/FfiTask)
+            :args $ [] 'Number
+        'stop-tasks! $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn stop-tasks! ()
+            .each @*tasks $ fn (task)
+              hint-fn $ {}
+                :args $ [] 'calcit.core/FfiTask
+                :return 'Unit
+              .cancel! task
+            reset! *tasks $ []
+            , &unit
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'Unit)
+            :args $ []
         'storage-file $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def storage-file
             if (empty? calcit-dirname)
@@ -1049,117 +1299,222 @@
           :schema $ :: 'String
         'sync-clients! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn sync-clients! (reel)
-            wss-each! $ fn (sid)
-              let
-                  db $ :db reel
-                  records $ :records reel
-                  session $ get-in db $ [] :sessions sid
-                  old-store $ or (get @*client-caches sid) nil
-                  new-store $ twig-container db session records
-                  changes $ diff-twig old-store new-store $ {} (:key :id)
-                ; when config/dev? $ println "|Changes for" sid |: changes $ count records
-                if
-                  not= changes $ []
-                  do
-                    wss-send! sid $ format-cirru-edn $ :: :patch changes
-                    swap! *client-caches assoc sid new-store
+            let
+                db $ :db reel
+                complete? $ ref true
+              .each
+                .to-list $ keys $ :sessions db
+                fn (sid)
+                  hint-fn $ {}
+                    :args $ [] 'Number
+                    :return 'Unit
+                  let
+                      session $ .unwrap $ get (:sessions db) sid
+                      old-store $ .unwrap-or (get @*client-caches sid) nil
+                      new-store $ twig-container db session $ :records reel
+                      changes $ diff-twig old-store new-store $ {} (:key :id)
+                    when
+                      not $ empty? changes
+                      match
+                        wss-send! sid $ format-cirru-edn $ schema/ServerPacket :patch changes
+                        (:accepted) (swap! *client-caches assoc sid new-store)
+                        _ $ do (reset! complete? false) (eprintln "|Client patch was not accepted:" sid)
+                    , &unit
+              , @complete?
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'Bool)
+            :args $ [] $ :: 'cumulo-reel.core/ReelState 'app.schema/Db
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.server
           :require (app.schema :as schema)
             app.updater :refer $ updater
-            cumulo-reel.core :refer $ reel-reducer refresh-reel reel-schema
+            cumulo-reel.core :refer $ ReelState reel-reducer refresh-reel
             app.config :as config
             app.twig.container :refer $ twig-container
             recollect.diff :refer $ diff-twig
-            wss.core :refer $ wss-serve! wss-send! wss-each!
+            wss.core :refer $ wss-serve! wss-send!
             recollect.twig :refer $ clear-twig-caches!
             app.$meta :refer $ calcit-dirname
             calcit.std.fs :refer $ path-exists? check-write-file!
-            calcit.std.time :refer $ set-interval
+            calcit.std.time :refer $ set-interval!
             calcit.std.date :refer $ get-time! extract-time get-timestamp
+            calcit.std.process :refer $ on-ctrl-c!
             calcit.std.path :refer $ join-path
     'app.twig.container $ %{} 'FileEntry
       :defs $ {}
         'twig-container $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn twig-container (db session records)
             let
-                logged-in? $ some? $ :user-id session
+                user $ match (:user-id session)
+                  (:none) (Option :none)
+                  (:some id)
+                    .map
+                      get (:users db) id
+                      , twig-user
+                logged-in? $ .some? user
                 router $ :router session
-                base-data $ {} (:logged-in? logged-in?) (:session session)
-                  :reel-length $ count records
-              merge base-data $ if logged-in?
-                {}
-                  :user $ twig-user $ dissoc
-                    get-in db $ [] :users $ :user-id session
-                    , :tasks
-                  :router $ assoc router :data $ case-default (:name router) ({})
-                    :home $ {} $ :issues
-                      -> (:issues db)
-                        .filter-kv $ fn (k v)
-                          not $ :solved? v
-                    :archived $ {} $ :issues
-                      -> (:issues db)
-                        .filter-kv $ fn (k v) (:solved? v)
-                    :issue $ {} $ :issue
-                      get-in db $ [] :issues $ :data router
-                    :profile $ twig-members (:sessions db) (:users db)
-                  :count $ count $ :sessions db
-                  :color $ rand-hex-color!
-                {}
+                page $ if logged-in?
+                  match (:name router)
+                    :home $ schema/Page :home $ .filter-kv (:issues db)
+                      fn (id issue)
+                        not $ :solved? issue
+                    :archived $ schema/Page :archived $ .filter-kv (:issues db)
+                      fn (id issue) (:solved? issue)
+                    :issue $ schema/Page :issue $ match (:data router)
+                      (:none) (Option :none)
+                      (:some id)
+                        get (:issues db) id
+                    :profile $ schema/Page :profile $ twig-members (:sessions db) (:users db)
+                    _ $ schema/Page :unknown
+                  schema/Page :home $ {}
+              schema/ClientStore :logged-in? logged-in? :session session :user user :router
+                schema/RouterView :name (:name router) :title (:title router) :data page :router $ :router router
+                , :count
+                  count $ :sessions db
+                  , :color
+                    if logged-in? (rand-hex-color!) |
+                    , :reel-length $ count records
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'app.schema/ClientStore)
+            :args $ [] 'app.schema/Db 'app.schema/Session $ :: 'List (:: 'List 'Dynamic)
+          :tests $ [] $ %{} 'TestEntry (:name |projects-private-user-and-route-data)
+            :code $ quote $ let
+                connected $ app.updater/updater schema/database (schema/Op :session/connect) 1 |c1 0
+                registered $ app.updater/updater connected (schema/Op :user/sign-up |demo |pw) 1 |u1 1
+                added $ app.updater/updater registered (schema/Op :issue/add |question) 1 |i1 2
+                session $ .unwrap $ get (:sessions added) 1
+                view $ twig-container added session $ []
+                projected-user $ .unwrap $ :user view
+                solved $ app.updater/updater added (schema/Op :issue/toggle-solved |i1) 1 |solve 3
+                archived-route $ struct-with schema/router $ :name :archived
+                archived-db $ app.updater/updater solved (schema/Op :router/change archived-route) 1 |route 4
+                archived-view $ twig-container archived-db
+                  .unwrap $ get (:sessions archived-db) 1
+                  []
+                guest-view $ twig-container added schema/session $ []
+              assert= true $ :logged-in? view
+              assert= |demo $ :name projected-user
+              assert= false $ contains-field? projected-user :password
+              match
+                :data $ :router view
+                (:home issues)
+                  assert= true $ contains? issues |i1
+                _ $ raise "|Expected home issue projection"
+              match
+                :data $ :router archived-view
+                (:archived issues)
+                  assert= true $ :solved? $ .unwrap (get issues |i1)
+                _ $ raise "|Expected archived issue projection"
+              assert= false $ :logged-in? guest-view
+              assert= (Option :none) (:user guest-view)
+              match
+                :data $ :router guest-view
+                (:home issues)
+                  assert= ({}) issues
+                _ $ raise "|Guest must not receive business issue data"
+              assert= (Option :some |demo)
+                .unwrap $ get
+                  twig-members (:sessions added) (:users added)
+                  , 1
+            :tags $ #{} :server
         'twig-members $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn twig-members (sessions users)
-            -> sessions (.to-list)
-              map $ fn (pair)
-                let[] (k session) pair $ [] k $ get-in users
-                  [] (:user-id session) :name
-              pairs-map
+            filter-map-kv sessions $ fn (sid session)
+              hint-fn $ {}
+                :args $ [] 'Number 'app.schema/Session
+                :return $ :: 'MapEntryDecision 'Number $ :: 'Option 'String
+              MapEntryDecision :keep sid $ match (:user-id session)
+                (:none) (Option :none)
+                (:some id)
+                  .map (get users id)
+                    fn (user) (:name user)
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {}
+            :args $ [] (:: 'Map 'Number 'app.schema/Session) (:: 'Map 'String 'app.schema/User)
+            :return $ :: 'Map 'Number $ :: 'Option 'String
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.twig.container
           :require
             app.twig.user :refer $ twig-user
-            memof.alias :refer $ memof-call
             calcit.std.rand :refer $ rand-hex-color!
+            app.schema :as schema
     'app.twig.user $ %{} 'FileEntry
       :defs $ {} $ 'twig-user
         %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn twig-user (user) (dissoc user :password)
+          :code $ quote $ defn twig-user (user)
+            schema/UserView :id (:id user) :name (:name user) :nickname (:nickname user) :avatar $ :avatar user
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'app.schema/UserView)
+            :args $ [] 'app.schema/User
       :ns $ %{} 'NsEntry (:doc |)
-        :code $ quote $ ns app.twig.user (:require)
+        :code $ quote $ ns app.twig.user
+          :require $ app.schema :as schema
     'app.updater $ %{} 'FileEntry
       :defs $ {} $ 'updater
         %{} 'CodeEntry (:doc |)
           :code $ quote $ defn updater (db op sid op-id op-time)
-            let
-                session $ get-in db $ [] :sessions sid
-                user $ if (some? session)
-                  get-in db $ [] :users $ :user-id session
-              tag-match op
-                (:session/connect) (session/connect db sid op-id op-time)
-                (:session/disconnect) (session/disconnect db sid op-id op-time)
-                (:session/remove-message op-data) (session/remove-message db op-data sid op-id op-time)
-                (:user/log-in username password) (user/log-in db username password sid op-id op-time)
-                (:user/sign-up username password) (user/sign-up db username password sid op-id op-time)
-                (:user/log-out op-data) (user/log-out db op-data sid op-id op-time)
-                (:router/change op-data) (router/change db op-data sid op-id op-time)
-                (:issue/add op-data) (issue/add-issue db op-data sid op-id op-time)
-                (:issue/del op-data) (issue/del-issue db op-data sid op-id op-time)
-                (:issue/update op-data) (issue/update-issue db op-data sid op-id op-time)
-                (:issue/toggle-solved op-data) (issue/toggle-solved db op-data sid op-id op-time)
-                (:issue/touch op-data) (issue/touch-issue db op-data sid op-id op-time)
-                (:issue/add-log op-data) (issue/add-issue-log db op-data sid op-id op-time)
-                (:issue/update-log op-data) (issue/update-issue-log db op-data sid op-id op-time)
-                (:issue/del-log op-data) (issue/del-issue-log op-data db sid op-id op-time)
-                _ $ do (eprintln "|Unknown op:" op) db
+            match op
+              (:session/connect) (session/connect db sid op-id op-time)
+              (:session/disconnect) (session/disconnect db sid op-id op-time)
+              (:session/remove-message id) (session/remove-message db id sid op-id op-time)
+              (:user/log-in username password) (user/log-in db username password sid op-id op-time)
+              (:user/sign-up username password) (user/sign-up db username password sid op-id op-time)
+              (:user/log-out) (user/log-out db nil sid op-id op-time)
+              (:router/change data) (router/change db data sid op-id op-time)
+              (:issue/add content) (issue/add-issue db content sid op-id op-time)
+              (:issue/del id) (issue/del-issue db id sid op-id op-time)
+              (:issue/update data) (issue/update-issue db data sid op-id op-time)
+              (:issue/toggle-solved id) (issue/toggle-solved db id sid op-id op-time)
+              (:issue/touch id) (issue/touch-issue db id sid op-id op-time)
+              (:issue/add-log data) (issue/add-issue-log db data sid op-id op-time)
+              (:issue/update-log data) (issue/update-issue-log db data sid op-id op-time)
+              (:issue/del-log data) (issue/del-issue-log db data sid op-id op-time)
+              (:effect/persist) db
+              (:reel/reset) db
+              (:reel/merge) db
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'app.schema/Db)
+            :args $ [] 'app.schema/Db 'app.schema/Op 'Number 'String 'Number
+          :tests $ []
+            %{} 'TestEntry (:name |issue-and-log-editing)
+              :code $ quote $ let
+                  connected $ updater app.schema/database (app.schema/Op :session/connect) 1 |connect 0
+                  registered $ updater connected (app.schema/Op :user/sign-up |demo |pw) 1 |u1 1
+                  added $ updater registered (app.schema/Op :issue/add |question) 1 |i1 10
+                  content-edit $ app.schema/IssueEdit :id |i1 :content (Option :some |changed) :desc $ Option :none
+                  changed $ updater added (app.schema/Op :issue/update content-edit) 1 |change 11
+                  desc-edit $ app.schema/IssueEdit :id |i1 :content (Option :none) :desc $ Option :some |details
+                  described $ updater changed (app.schema/Op :issue/update desc-edit) 1 |desc 12
+                  logged $ updater described
+                    app.schema/Op :issue/add-log $ app.schema/AddLog :issue-id |i1 :content |answer
+                    , 1 |l1 20
+                  updated-log $ updater logged
+                    app.schema/Op :issue/update-log $ app.schema/LogEdit :issue-id |i1 :id |l1 :content |corrected
+                    , 1 |edit 30
+                  solved $ updater updated-log (app.schema/Op :issue/toggle-solved |i1) 1 |solve 40
+                  found $ .unwrap $ get (:issues solved) |i1
+                  log $ .unwrap $ get (:logs found) |l1
+                assert= |changed $ :content found
+                assert= |details $ :desc found
+                assert= (Option :some |u1) (:author-id found)
+                assert= 10 $ :created-time found
+                assert= 10 $ :touched-time found
+                assert= true $ :solved? found
+                assert= |corrected $ :content log
+                assert= 20 $ :created-time log
+                assert= (Option :some |u1) (:user-id log)
+                assert= false $ :solution? log
+                assert= (Result :ok solved)
+                  app.schema/parse-database $ format-cirru-edn solved
+              :tags $ #{} :server
+            %{} 'TestEntry (:name |preserves-unimplemented-delete-operations)
+              :code $ quote $ let
+                  db $ updater app.schema/database (app.schema/Op :issue/add |question) 1 |i1 0
+                  log-ref $ app.schema/LogRef :issue-id |i1 :id |l1
+                assert= db $ updater db (app.schema/Op :issue/del-log log-ref) 1 |d1 1
+                assert= db $ updater db (app.schema/Op :issue/del |i1) 1 |d2 2
+                assert= db $ updater db (app.schema/Op :issue/touch |i1) 1 |t1 3
+              :tags $ #{} :server
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
           :require (app.updater.session :as session) (app.updater.user :as user) (app.updater.router :as router) (app.updater.issue :as issue) (app.schema :as schema)
@@ -1167,76 +1522,102 @@
     'app.updater.issue $ %{} 'FileEntry
       :defs $ {}
         'add-issue $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn add-issue (db op-data sid op-id op-time)
-            let
-                user-id $ get-in db $ [] :sessions sid :user-id
-              assoc-in db ([] :issues op-id)
-                merge schema/issue $ {} (:id op-id)
-                  :content $ either op-data "|default content"
-                  :author-id user-id
-                  :created-time op-time
-                  :touched-time op-time
-                  :desc |...
+          :code $ quote $ defn add-issue (db content sid op-id op-time)
+            struct-with db $ :issues $ assoc (:issues db) op-id
+              struct-with schema/issue (:id op-id) (:content content)
+                :author-id $ session/user-id db sid
+                :created-time op-time
+                :touched-time op-time
+                :desc |...
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'app.schema/Db)
+            :args $ [] 'app.schema/Db 'String 'Number 'String 'Number
         'add-issue-log $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn add-issue-log (db op-data sid op-id op-time)
-            let
-                issue-id $ :issue-id op-data
-                content $ :content op-data
-                user-id $ get-in db $ [] :sessions sid :user-id
-              assoc-in db ([] :issues issue-id :logs op-id)
-                merge schema/log $ {} (:id op-id) (:content content) (:user-id user-id) (:created-time op-time)
+          :code $ quote $ defn add-issue-log (db data sid op-id op-time)
+            match
+              get (:issues db) (:issue-id data)
+              (:none) db
+              (:some current)
+                struct-with db $ :issues $ assoc (:issues db) (:issue-id data)
+                  struct-with current $ :logs $ assoc (:logs current) op-id
+                    struct-with schema/log (:id op-id)
+                      :content $ :content data
+                      :user-id $ session/user-id db sid
+                      :created-time op-time
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'app.schema/Db)
+            :args $ [] 'app.schema/Db 'app.schema/AddLog 'Number 'String 'Number
         'del-issue $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn del-issue (db op-data sid op-id op-time) (println |todo) db
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'app.schema/Db)
+            :args $ [] 'app.schema/Db 'String 'Number 'String 'Number
         'del-issue-log $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn del-issue-log (db op-data sid op-id op-time) (println |TODO) db
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'app.schema/Db)
+            :args $ [] 'app.schema/Db 'app.schema/LogRef 'Number 'String 'Number
         'toggle-solved $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn toggle-solved (db op-data sid op-id op-time)
-            let
-                issue-id op-data
-              update-in db ([] :issues issue-id :solved?) not
+          :code $ quote $ defn toggle-solved (db issue-id sid op-id op-time)
+            match
+              get (:issues db) issue-id
+              (:none) db
+              (:some current)
+                struct-with db $ :issues $ assoc (:issues db) issue-id
+                  struct-with current $ :solved? $ not (:solved? current)
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'app.schema/Db)
+            :args $ [] 'app.schema/Db 'String 'Number 'String 'Number
         'touch-issue $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn touch-issue (db op-data sid op-id op-time) (println |TODO) db
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'app.schema/Db)
+            :args $ [] 'app.schema/Db 'String 'Number 'String 'Number
         'update-issue $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn update-issue (db op-data sid op-id op-time)
-            let
-                issue-id $ :id op-data
-                data $ dissoc op-data :id
-              update-in db ([] :issues issue-id)
-                fn (issue) (merge issue data)
+          :code $ quote $ defn update-issue (db data sid op-id op-time)
+            match
+              get (:issues db) (:id data)
+              (:none) db
+              (:some current)
+                struct-with db $ :issues $ assoc (:issues db) (:id data)
+                  struct-with current
+                    :content $ .unwrap-or (:content data) (:content current)
+                    :desc $ .unwrap-or (:desc data) (:desc current)
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'app.schema/Db)
+            :args $ [] 'app.schema/Db 'app.schema/IssueEdit 'Number 'String 'Number
         'update-issue-log $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn update-issue-log (db op-data sid op-id op-time)
-            let
-                issue-id $ :issue-id op-data
-                log-id $ :id op-data
-                data $ -> op-data (dissoc :id) (dissoc :issue-id)
-              update-in db ([] :issues issue-id :logs log-id)
-                fn (log) (merge log data)
+          :code $ quote $ defn update-issue-log (db data sid op-id op-time)
+            match
+              get (:issues db) (:issue-id data)
+              (:none) db
+              (:some current)
+                match
+                  get (:logs current) (:id data)
+                  (:none) db
+                  (:some found)
+                    struct-with db $ :issues $ assoc (:issues db) (:issue-id data)
+                      struct-with current $ :logs $ assoc (:logs current) (:id data)
+                        struct-with found $ :content $ :content data
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'app.schema/Db)
+            :args $ [] 'app.schema/Db 'app.schema/LogEdit 'Number 'String 'Number
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.issue
-          :require $ app.schema :as schema
+          :require (app.schema :as schema) (app.updater.session :as session)
     'app.updater.router $ %{} 'FileEntry
       :defs $ {} $ 'change
         %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn change (db op-data sid op-id op-time)
-            assoc-in db ([] :sessions sid :router) op-data
+          :code $ quote $ defn change (db router sid op-id op-time)
+            match
+              get (:sessions db) sid
+              (:none) db
+              (:some current)
+                struct-with db $ :sessions $ assoc (:sessions db) sid
+                  struct-with current $ :router router
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'app.schema/Db)
+            :args $ [] 'app.schema/Db 'app.schema/Router 'Number 'String 'Number
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.router
     'app.updater.session $ %{} 'FileEntry
@@ -1291,6 +1672,16 @@
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'app.schema/Db)
             :args $ [] 'app.schema/Db 'String 'Number 'String 'Number
+        'user-id $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn user-id (db sid)
+            match
+              get (:sessions db) sid
+              (:none) (Option :none)
+              (:some current) (:user-id current)
+          :examples $ []
+          :schema $ :: 'Fn $ {}
+            :args $ [] 'app.schema/Db 'Number
+            :return $ :: 'Option 'String
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.session
           :require $ app.schema :as schema
