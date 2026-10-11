@@ -2167,7 +2167,7 @@
               (:some current)
                 match
                   find
-                    .to-list $ vals $ :users db
+                    .to-list $ distinct-values $ :users db
                     fn (user)
                       = username $ :name user
                   (:none)
@@ -2200,7 +2200,7 @@
               (:some current)
                 match
                   find
-                    .to-list $ vals $ :users db
+                    .to-list $ distinct-values $ :users db
                     fn (user)
                       = username $ :name user
                   (:some _)

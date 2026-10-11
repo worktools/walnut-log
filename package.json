@@ -14,7 +14,6 @@
     "cirru-color": "^0.2.4",
     "copy-text-to-clipboard": "^3.2.0",
     "dayjs": "^1.11.11",
-    "url-parse": "^1.5.10",
     "vite": "8.3.1"
   },
   "version": "0.0.1",
