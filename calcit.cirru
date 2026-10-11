@@ -632,7 +632,7 @@
                   .unwrap-or (get states :cursor) ([])
                   :: 'List 'Dynamic
                 state $ decode-map-as
-                  .unwrap-or (get states :data) initial-state
+                  schema/struct-input $ .unwrap-or (get states :data) initial-state
                   , 'app.schema/LoginState
               div
                 {} $ :style $ merge ui/flex ui/center
@@ -937,6 +937,11 @@
           :code $ quote $ defstruct LoginState (:username 'String) (:password 'String)
           :examples $ []
           :schema $ :: 'StructDef
+          :tests $ [] $ %{} 'TestEntry (:name |nominal-ui-state)
+            :code $ quote $ assert= (LoginState :username |tester :password |password)
+              decode-map-as
+                struct-input $ LoginState :username |tester :password |password
+                , 'app.schema/LoginState
         'Message $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct Message (:id 'String) (:text 'String)
           :examples $ []
