@@ -626,44 +626,299 @@
         :code $ quote $ ns app.config
     'app.schema $ %{} 'FileEntry
       :defs $ {}
+        'Db $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct Db
+            :sessions $ :: 'Map 'Number 'app.schema/Session
+            :users $ :: 'Map 'String 'app.schema/User
+            :issues $ :: 'Map 'String 'app.schema/Issue
+          :examples $ []
+          :schema $ :: 'StructDef
+        'Issue $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct Issue (:id 'String) (:content 'String)
+            :author-id $ :: 'Option 'String
+            :created-time 'Number
+            :touched-time 'Number
+            :desc 'String
+            :solved? 'Bool
+            :logs $ :: 'Map 'String 'app.schema/Log
+          :examples $ []
+          :schema $ :: 'StructDef
+        'Log $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct Log (:id 'String) (:content 'String)
+            :user-id $ :: 'Option 'String
+            :created-time 'Number
+            :solution? 'Bool
+          :examples $ []
+          :schema $ :: 'StructDef
+        'Message $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct Message (:id 'String) (:text 'String)
+          :examples $ []
+          :schema $ :: 'StructDef
+        'Router $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct Router (:name 'Tag)
+            :title $ :: 'Option 'String
+            :data $ :: 'Option 'String
+            :router $ :: 'Option 'app.schema/Router
+          :examples $ []
+          :schema $ :: 'StructDef
+        'Session $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct Session
+            :id $ :: 'Option 'Number
+            :user-id $ :: 'Option 'String
+            :nickname $ :: 'Option 'String
+            :router 'app.schema/Router
+            :messages $ :: 'Map 'String 'app.schema/Message
+          :examples $ []
+          :schema $ :: 'StructDef
+        'User $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct User (:id 'String) (:name 'String) (:password 'String)
+            :nickname $ :: 'Option 'String
+            :avatar $ :: 'Option 'String
+          :examples $ []
+          :schema $ :: 'StructDef
         'database $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def database
-            {}
-              :sessions $ do session $ {}
-              :users $ do user $ {}
-              :issues $ do issue $ {}
+            Db :sessions ({}) :users ({}) :issues $ {}
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'app.schema/Db
+        'decode-database $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn decode-database (value)
+            try
+              let
+                  source $ struct-input value
+                  sessions $ filter-map-kv
+                    decode-map-as
+                      .unwrap-or (get source :sessions) ({})
+                      :: 'Map 'Number 'Dynamic
+                    fn (key value)
+                      hint-fn $ {}
+                        :args $ [] 'Number 'Dynamic
+                        :return $ :: 'MapEntryDecision 'Number $ :: 'Map 'Tag 'Dynamic
+                      MapEntryDecision :keep key $ session-input value
+                  users $ filter-map-kv
+                    decode-map-as
+                      .unwrap-or (get source :users) ({})
+                      :: 'Map 'String 'Dynamic
+                    fn (key value)
+                      hint-fn $ {}
+                        :args $ [] 'String 'Dynamic
+                        :return $ :: 'MapEntryDecision 'String $ :: 'Map 'Tag 'Dynamic
+                      MapEntryDecision :keep key $ user-input value
+                  issues $ filter-map-kv
+                    decode-map-as
+                      .unwrap-or (get source :issues) ({})
+                      :: 'Map 'String 'Dynamic
+                    fn (key value)
+                      hint-fn $ {}
+                        :args $ [] 'String 'Dynamic
+                        :return $ :: 'MapEntryDecision 'String $ :: 'Map 'Tag 'Dynamic
+                      MapEntryDecision :keep key $ issue-input value
+                try-decode-map-as
+                  assoc
+                    assoc (assoc source :sessions sessions) :users users
+                    , :issues issues
+                  , 'app.schema/Db
+              fn (detail)
+                hint-fn $ {}
+                  :args $ [] 'String
+                  :return $ :: 'Result 'app.schema/Db 'String
+                Result :err detail
+          :examples $ []
+          :schema $ :: 'Fn $ {}
+            :args $ [] 'Dynamic
+            :return $ :: 'Result 'app.schema/Db 'String
         'issue $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def issue
-            {} (:id nil) (:content nil) (:author-id nil) (:created-time 0) (:touched-time 0) (:desc |) (:solved? false)
-              :logs $ do log $ {}
+            Issue :id | :content | :author-id (Option :none) :created-time 0 :touched-time 0 :desc | :solved? false :logs $ {}
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'app.schema/Issue
+        'issue-input $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn issue-input (value)
+            let
+                source $ struct-input value
+                logs $ filter-map-kv
+                  decode-map-as
+                    .unwrap-or (get source :logs) ({})
+                    :: 'Map 'String 'Dynamic
+                  fn (key value)
+                    hint-fn $ {}
+                      :args $ [] 'String 'Dynamic
+                      :return $ :: 'MapEntryDecision 'String $ :: 'Map 'Tag 'Dynamic
+                    MapEntryDecision :keep key $ log-input value
+              assoc
+                assoc source :author-id $ optional-input $ get source :author-id
+                , :logs logs
+          :examples $ []
+          :schema $ :: 'Fn $ {}
+            :args $ [] 'Dynamic
+            :return $ :: 'Map 'Tag 'Dynamic
         'log $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def log
-            {} (:id nil) (:content nil) (:user-id nil) (:created-time 0) (:solution? false)
+            Log :id | :content | :user-id (Option :none) :created-time 0 :solution? false
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'app.schema/Log
+        'log-input $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn log-input (value)
+            let
+                source $ struct-input value
+              assoc source :user-id $ optional-input $ get source :user-id
+          :examples $ []
+          :schema $ :: 'Fn $ {}
+            :args $ [] 'Dynamic
+            :return $ :: 'Map 'Tag 'Dynamic
+        'optional-input $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn optional-input (input)
+            match input
+              (:none) (Option :none)
+              (:some value)
+                if (nil? value) (Option :none) value
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'Dynamic)
+            :args $ [] $ :: 'Option 'Dynamic
+        'parse-database $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn parse-database (text)
+            try
+              decode-database $ parse-cirru-edn text $ {} (:Option Option) (:Db database) (:Session session) (:Router router) (:User user) (:Issue issue) (:Log log)
+                :Message $ Message :id | :text |
+              fn (detail)
+                hint-fn $ {}
+                  :args $ [] 'String
+                  :return $ :: 'Result 'app.schema/Db 'String
+                Result :err detail
+          :examples $ []
+          :schema $ :: 'Fn $ {}
+            :args $ [] 'String
+            :return $ :: 'Result 'app.schema/Db 'String
+          :tests $ []
+            %{} 'TestEntry (:name |reads-legacy-business-data)
+              :code $ quote $ match
+                parse-database "|{}\n  :users $ {}\n    |u1 $ {} (:id |u1) (:name |demo) (:password |hash) (:nickname |nick) (:avatar nil)\n  :sessions $ {}\n    1 $ {} (:id 1) (:user-id |u1) (:nickname nil)\n      :router $ {} (:name :issue) (:data |i1) (:router nil)\n      :messages $ {}\n        |m1 $ {} (:id |m1) (:text |hello)\n  :issues $ {}\n    |i1 $ {} (:id |i1) (:content |question) (:author-id |u1) (:created-time 10) (:touched-time 20) (:desc |details) (:solved? false)\n      :logs $ {}\n        |l1 $ {} (:id |l1) (:content |answer) (:user-id |u1) (:created-time 30) (:solution? true)"
+                (:err detail) (raise detail)
+                (:ok db)
+                  let
+                      found-user $ .unwrap $ get (:users db) |u1
+                      found-session $ .unwrap $ get (:sessions db) 1
+                      found-issue $ .unwrap $ get (:issues db) |i1
+                      found-log $ .unwrap $ get (:logs found-issue) |l1
+                    assert= |hash $ :password found-user
+                    assert= (Option :some |nick) (:nickname found-user)
+                    assert= (Option :none) (:avatar found-user)
+                    assert= (Option :some |u1) (:user-id found-session)
+                    assert= (Option :some |i1)
+                      :data $ :router found-session
+                    assert= |hello $ :text $ .unwrap
+                      get (:messages found-session) |m1
+                    assert= |question $ :content found-issue
+                    assert= 20 $ :touched-time found-issue
+                    assert= |answer $ :content found-log
+                    assert= true $ :solution? found-log
+                    assert= (Option :some |u1) (:user-id found-log)
+              :tags $ #{} :server
+            %{} 'TestEntry (:name |roundtrips-typed-business-data)
+              :code $ quote $ let
+                  saved-user $ struct-with user (:id |u1) (:name |demo) (:password |hash)
+                  saved-log $ struct-with log (:id |l1) (:content |answer)
+                    :user-id $ Option :some |u1
+                  saved-issue $ struct-with issue (:id |i1) (:content |question)
+                    :logs $ {} $ |l1 saved-log
+                  saved-session $ struct-with session
+                    :id $ Option :some 1
+                    :router $ struct-with router (:name :issue)
+                      :data $ Option :some |i1
+                      :router $ Option :some $ struct-with router (:name :profile)
+                  db $ struct-with database
+                    :users $ {} $ |u1 saved-user
+                    :issues $ {} $ |i1 saved-issue
+                    :sessions $ {} $ 1 saved-session
+                assert= (Result :ok db)
+                  parse-database $ format-cirru-edn db
+              :tags $ #{} :server
+            %{} 'TestEntry (:name |rejects-invalid-stored-password)
+              :code $ quote $ match
+                parse-database "|{} (:users ({} (|u1 $ {} (:id |u1) (:name |demo) (:password 42))))"
+                (:ok _)
+                  raise "|Invalid stored password must not be silently accepted"
+                (:err detail)
+                  assert= true $ .includes? detail |password
+              :tags $ #{} :server
         'router $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def router
-            {} (:name nil) (:title nil)
-              :data $ {}
-              :router nil
+            Router :name :home :title (Option :none) :data (Option :none) :router $ Option :none
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'app.schema/Router
+        'router-input $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn router-input (value)
+            let
+                source $ struct-input value
+                nested $ optional-input $ get source :router
+              assoc
+                assoc
+                  assoc source :title $ optional-input $ get source :title
+                  , :data $ optional-input $ get source :data
+                , :router $ if
+                  or (map? nested) (struct? nested)
+                  Option :some $ router-input nested
+                  if (enum? nested)
+                    if
+                      match (enum-definition nested)
+                        (:some found) (= found Option)
+                        (:none) false
+                      match nested
+                        (:some child)
+                          Option :some $ router-input child
+                        (:none) nested
+                        _ nested
+                      , nested
+                    , nested
+          :examples $ []
+          :schema $ :: 'Fn $ {}
+            :args $ [] 'Dynamic
+            :return $ :: 'Map 'Tag 'Dynamic
         'session $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def session
-            {} (:user-id nil) (:id nil) (:nickname nil)
-              :router $ do router $ {} (:name :home) (:data nil) (:router nil)
-              :messages $ {}
+            Session :id (Option :none) :user-id (Option :none) :nickname (Option :none) :router router :messages $ {}
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'app.schema/Session
+        'session-input $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn session-input (value)
+            let
+                source $ struct-input value
+              assoc
+                assoc
+                  assoc
+                    assoc source :id $ optional-input $ get source :id
+                    , :user-id $ optional-input $ get source :user-id
+                  , :nickname $ optional-input $ get source :nickname
+                , :router $ router-input $ .unwrap (get source :router)
+          :examples $ []
+          :schema $ :: 'Fn $ {}
+            :args $ [] 'Dynamic
+            :return $ :: 'Map 'Tag 'Dynamic
+        'struct-input $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn struct-input (value)
+            decode-map-as
+              if (struct? value) (&struct:to-map value) value
+              :: 'Map 'Tag 'Dynamic
+          :examples $ []
+          :schema $ :: 'Fn $ {}
+            :args $ [] 'Dynamic
+            :return $ :: 'Map 'Tag 'Dynamic
         'user $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def user
-            {} (:name nil) (:id nil) (:nickname nil) (:avatar nil) (:password nil)
+            User :id | :name | :password | :nickname (Option :none) :avatar $ Option :none
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'app.schema/User
+        'user-input $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn user-input (value)
+            let
+                source $ struct-input value
+              assoc
+                assoc source :nickname $ optional-input $ get source :nickname
+                , :avatar $ optional-input $ get source :avatar
+          :examples $ []
+          :schema $ :: 'Fn $ {}
+            :args $ [] 'Dynamic
+            :return $ :: 'Map 'Tag 'Dynamic
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.schema
     'app.server $ %{} 'FileEntry
@@ -674,13 +929,16 @@
           :schema $ :: 'Dynamic
         '*initial-db $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defatom *initial-db
-            if
-              path-exists? $ w-log storage-file
+            if (path-exists? storage-file)
               do (println "|Found local EDN data")
-                merge schema/database $ parse-cirru-edn $ read-file storage-file
+                match
+                  schema/parse-database $ read-file storage-file
+                  (:ok db) db
+                  (:err detail)
+                    raise $ str "|Invalid stored database: " detail
               do (println "|Found no data") schema/database
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Ref 'app.schema/Db
         '*reader-reel $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defatom *reader-reel @*reel
           :examples $ []
@@ -983,74 +1241,141 @@
         :code $ quote $ ns app.updater.router
     'app.updater.session $ %{} 'FileEntry
       :defs $ {}
+        'add-message $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn add-message (db sid op-id text)
+            match
+              get (:sessions db) sid
+              (:none) db
+              (:some current)
+                struct-with db $ :sessions $ assoc (:sessions db) sid
+                  struct-with current $ :messages $ assoc (:messages current) op-id (schema/Message :id op-id :text text)
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'app.schema/Db)
+            :args $ [] 'app.schema/Db 'Number 'String 'String
         'connect $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn connect (db sid op-id op-time)
-            assoc-in db ([] :sessions sid)
-              merge schema/session $ {} $ :id sid
+            struct-with db $ :sessions $ assoc (:sessions db) sid
+              struct-with schema/session $ :id $ Option :some sid
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'app.schema/Db)
+            :args $ [] 'app.schema/Db 'Number 'String 'Number
+          :tests $ [] $ %{} 'TestEntry (:name |session-lifecycle)
+            :code $ quote $ let
+                connected $ connect schema/database 1 |connect 0
+                current $ .unwrap $ get (:sessions connected) 1
+                messages $ {} $ |m1 (schema/Message :id |m1 :text |hello)
+                with-message $ struct-with connected $ :sessions
+                  assoc (:sessions connected) 1 $ struct-with current $ :messages messages
+                removed $ remove-message with-message |m1 1 |remove 1
+              assert= (Option :some 1) (:id current)
+              assert= (Option :none) (:user-id current)
+              assert= :home $ :name $ :router current
+              assert= ({})
+                :messages $ .unwrap $ get (:sessions removed) 1
+              assert= schema/database $ disconnect removed 1 |disconnect 2
+            :tags $ #{} :server
         'disconnect $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn disconnect (db sid op-id op-time)
-            update db :sessions $ fn (session) (dissoc session sid)
+            struct-with db $ :sessions $ dissoc (:sessions db) sid
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'app.schema/Db)
+            :args $ [] 'app.schema/Db 'Number 'String 'Number
         'remove-message $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn remove-message (db op-data sid op-id op-time)
-            update-in db ([] :sessions sid :messages)
-              fn (messages)
-                dissoc messages $ :id op-data
+          :code $ quote $ defn remove-message (db message-id sid op-id op-time)
+            match
+              get (:sessions db) sid
+              (:none) db
+              (:some session)
+                struct-with db $ :sessions $ assoc (:sessions db) sid
+                  struct-with session $ :messages $ dissoc (:messages session) message-id
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'app.schema/Db)
+            :args $ [] 'app.schema/Db 'String 'Number 'String 'Number
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.session
           :require $ app.schema :as schema
     'app.updater.user $ %{} 'FileEntry
       :defs $ {}
         'log-in $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn log-in (db username password sid op-id op-time) (; println "|OP DATA:" db username)
-            let
-                maybe-user $ -> (:users db) (vals) (.to-list)
-                  find $ fn (user)
-                    and $ = username $ :name user
-              update-in db ([] :sessions sid)
-                fn (session)
-                  if (some? maybe-user)
+          :code $ quote $ defn log-in (db username password sid op-id op-time)
+            match
+              get (:sessions db) sid
+              (:none) db
+              (:some current)
+                match
+                  find
+                    .to-list $ vals $ :users db
+                    fn (user)
+                      = username $ :name user
+                  (:none)
+                    session/add-message db sid op-id $ str "|No user named: " username
+                  (:some found)
                     if
-                      = (md5 password) (:password maybe-user)
-                      assoc session :user-id $ :id maybe-user
-                      update session :messages $ fn (messages)
-                        assoc messages op-id $ {} (:id op-id)
-                          :text $ str "|Wrong password for " username
-                    update session :messages $ fn (messages)
-                      assoc messages op-id $ {} (:id op-id)
-                        :text $ str "|No user named: " username
+                      = (md5 password) (:password found)
+                      struct-with db $ :sessions $ assoc (:sessions db) sid
+                        struct-with current $ :user-id $ Option :some (:id found)
+                      session/add-message db sid op-id $ str "|Wrong password for " username
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'app.schema/Db)
+            :args $ [] 'app.schema/Db 'String 'String 'Number 'String 'Number
         'log-out $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn log-out (db op-data sid op-id op-time)
-            assoc-in db ([] :sessions sid :user-id) nil
+            match
+              get (:sessions db) sid
+              (:none) db
+              (:some current)
+                struct-with db $ :sessions $ assoc (:sessions db) sid
+                  struct-with current $ :user-id $ Option :none
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'app.schema/Db)
+            :args $ [] 'app.schema/Db 'Nil 'Number 'String 'Number
         'sign-up $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn sign-up (db username password sid op-id op-time)
-            let-sugar
-                maybe-user $ find
-                  vals $ :users db
-                  fn (user)
-                    = username $ :name user
-              if (some? maybe-user)
-                update-in db ([] :sessions sid :messages)
-                  fn (messages)
-                    assoc messages op-id $ {} (:id op-id)
-                      :text $ str "|Name is taken: " username
-                -> db
-                  assoc-in ([] :sessions sid :user-id) op-id
-                  assoc-in ([] :users op-id)
-                    {} (:id op-id) (:name username) (:nickname username)
-                      :password $ md5 password
-                      :avatar nil
+            match
+              get (:sessions db) sid
+              (:none) db
+              (:some current)
+                match
+                  find
+                    .to-list $ vals $ :users db
+                    fn (user)
+                      = username $ :name user
+                  (:some _)
+                    session/add-message db sid op-id $ str "|Name is taken: " username
+                  (:none)
+                    struct-with db
+                      :sessions $ assoc (:sessions db) sid $ struct-with current
+                        :user-id $ Option :some op-id
+                      :users $ assoc (:users db) op-id $ struct-with schema/user (:id op-id) (:name username)
+                        :nickname $ Option :some username
+                        :password $ md5 password
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'app.schema/Db)
+            :args $ [] 'app.schema/Db 'String 'String 'Number 'String 'Number
+          :tests $ [] $ %{} 'TestEntry (:name |authentication-flow)
+            :code $ quote $ let
+                connected $ session/connect schema/database 1 |c1 0
+                registered $ sign-up connected |demo |secret 1 |u1 1
+                logged-out $ log-out registered nil 1 |out 2
+                wrong $ log-in logged-out |demo |wrong 1 |bad 3
+                logged-in $ log-in wrong |demo |secret 1 |login 4
+                duplicate $ sign-up logged-in |demo |another 1 |duplicate 5
+                current $ .unwrap $ get (:sessions duplicate) 1
+                saved-user $ .unwrap $ get (:users duplicate) |u1
+              assert= (md5 |secret) (:password saved-user)
+              assert= (Option :some |demo) (:nickname saved-user)
+              assert= (Option :none)
+                :user-id $ .unwrap $ get (:sessions wrong) 1
+              assert= (Option :some |u1) (:user-id current)
+              assert= "|Wrong password for demo" $ :text $ .unwrap
+                get (:messages current) |bad
+              assert= "|Name is taken: demo" $ :text $ .unwrap
+                get (:messages current) |duplicate
+              assert= 1 $ count $ :users duplicate
+            :tags $ #{} :server
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.user
-          :require $ calcit.std.hash :refer $ md5
+          :require
+            calcit.std.hash :refer $ md5
+            app.schema :as schema
+            app.updater.session :as session
