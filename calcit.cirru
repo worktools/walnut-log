@@ -68,12 +68,22 @@
             println "|Running mode:" $ if config/dev? |dev |release
             render-app!
             connect!
-            add-watch *store :changes $ fn (store prev) (render-app!)
-            add-watch *states :changes $ fn (states prev) (render-app!)
-            on-page-touch $ fn () $ if (nil? @*store) (connect!)
+            add-watch! *store :changes $ fn (store prev)
+              hint-fn $ {}
+                :args $ [] (:: 'Option 'app.schema/ClientStore) (:: 'Option 'app.schema/ClientStore)
+                :return 'Unit
+              render-app!
+            add-watch! *states :changes $ fn (states prev)
+              hint-fn $ {}
+                :args $ [] (:: 'Map 'Tag 'Dynamic) (:: 'Map 'Tag 'Dynamic)
+                :return 'Unit
+              render-app!
             println "|App started!"
+            , &unit
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'Unit)
+            :args $ []
+            :features $ #{} :js-ffi
         'mount-target $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn mount-target ()
             narrow-element $ .unwrap $ browser/query-selector |.app
@@ -98,20 +108,38 @@
             :args $ [] 'Dynamic
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! ()
-            if (some? client-errors) (hud! |error client-errors)
-              do (hud! |inactive nil) (remove-watch *store :changes) (remove-watch *states :changes) (clear-cache!) (render-app!)
-                add-watch *store :changes $ fn (store prev) (render-app!)
-                add-watch *states :changes $ fn (states prev) (render-app!)
-                println "|Code updated."
+            if (nil? client-errors)
+              do (hud! |inactive nil) (remove-watch! *store :changes) (remove-watch! *states :changes) (clear-cache!) (render-app!)
+                add-watch! *store :changes $ fn (store prev)
+                  hint-fn $ {}
+                    :args $ [] (:: 'Option 'app.schema/ClientStore) (:: 'Option 'app.schema/ClientStore)
+                    :return 'Unit
+                  render-app!
+                add-watch! *states :changes $ fn (states prev)
+                  hint-fn $ {}
+                    :args $ [] (:: 'Map 'Tag 'Dynamic) (:: 'Map 'Tag 'Dynamic)
+                    :return 'Unit
+                  render-app!
+                println "|Code updated!"
+              hud! |error client-errors
+            , &unit
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'Unit)
+            :args $ []
+            :features $ #{} :js-ffi
         'render-app! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-app! ()
             render! (mount-target)
-              comp-container (:states @*states) @*store
+              comp-container
+                decode-map-as
+                  .unwrap $ get @*states :states
+                  :: 'Map 'Dynamic 'Dynamic
+                , @*store
               , dispatch!
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'Unit)
+            :args $ []
+            :features $ #{} :js-ffi
         'simulate-login! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn simulate-login! ()
             match
@@ -137,7 +165,6 @@
             app.schema :as schema
             app.config :as config
             ws-edn.client :refer $ ws-connect! ws-send!
-            cumulo-util.core :refer $ on-page-touch
             |bottom-tip :default hud!
             |./calcit.build-errors :default client-errors
             js-ffi.browser :as browser
@@ -155,66 +182,96 @@
                 <> |Logs
                 a $ {} (:inner-text |Add) (:style ui/link)
                   :on-click $ fn (e d!)
+                    hint-fn $ {}
+                      :args $ [] (:: 'Map 'Tag 'Dynamic)
+                        :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
+                          :args $ [] 'Dynamic
+                      :return 'Unit
                     .show add-plugin d! $ fn (text)
-                      if
+                      hint-fn $ {}
+                        :args $ [] 'String
+                        :return 'Unit
+                      when
                         not $ blank? text
-                        d! :issue/add-log $ {} (:issue-id issue-id) (:content text)
+                        d! $ schema/Op :issue/add-log $ schema/AddLog :issue-id issue-id :content text
+                      , &unit
+                    , &unit
                 .render add-plugin
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
+            :args $ [] (:: 'Map 'Dynamic 'Dynamic) 'String
+            :features $ #{} :js-ffi
         'comp-container $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defcomp comp-container (states store)
-            let
-                state $ either (:data states)
-                  {} $ :demo |
-                session $ :session $ either store ({})
-                router $ either
-                  :router $ either store $ {}
-                  {}
-                router-data $ :data router
-              if (nil? store) (comp-offline)
-                div
-                  {} $ :style $ merge ui/global ui/fullscreen ui/column
-                    {} $ :background-color $ hsl 0 0 96
-                  comp-navigation (>> states :nav) (:logged-in? store) (:count store)
+          :code $ quote $ defcomp comp-container (states connection)
+            match connection
+              (:none) (comp-offline)
+              (:some store)
+                let
+                    page $ :data $ :router store
+                    messages $ filter-map-kv
+                      :messages $ :session store
+                      fn (id message)
+                        hint-fn $ {}
+                          :args $ [] 'String 'app.schema/Message
+                          :return $ :: 'MapEntryDecision 'String $ :: 'Map 'Tag 'Dynamic
+                        MapEntryDecision :keep id $ {}
+                          :id $ :id message
+                          :text $ :text message
                   div
-                    {} $ :style ui/expand
+                    {} $ :style $ merge ui/global ui/fullscreen ui/column
+                      {} $ :background-color $ hsl 0 0 96
+                    comp-navigation (>> states :nav) (:logged-in? store) (:count store)
                     div
-                      {} $ :style $ merge ui/expand
-                        {} (:max-width 960) (:margin :auto)
-                      if (:logged-in? store)
-                        case-default (:name router) (<> router)
-                          :home $ div
-                            {} $ :style $ merge ui/expand
-                              {} $ :padding |8px
-                            comp-issues-list (>> states :list)
-                              get-in router $ [] :data :issues
-                            =< nil 100
-                          :archived $ div
-                            {} $ :style $ merge ui/expand
-                              {} $ :padding |8px
-                            comp-archived-list (>> states :list)
-                              get-in router $ [] :data :issues
-                            =< nil 100
-                          :issue $ let
-                              issue $ get-in router $ [] :data :issue
-                            div
-                              {} $ :style $ merge ui/expand ({})
-                              comp-issue-page
-                                >> states $ :id issue
-                                , issue
-                              =< nil 100
-                          :profile $ comp-profile (:user store) (:data router)
-                        comp-login $ >> states :login
-                  comp-status-color $ :color store
-                  when dev? $ comp-inspect |Store store $ {} (:bottom 0) (:left 0) (:max-width |100%)
-                  comp-messages
-                    get-in store $ [] :session :messages
-                    {}
-                    fn (info d!) (d! :session/remove-message info)
-                  when dev? $ comp-reel (:reel-length store) ({})
+                      {} $ :style ui/expand
+                      div
+                        {} $ :style $ merge ui/expand
+                          {} (:max-width 960) (:margin :auto)
+                        if (:logged-in? store)
+                          match page
+                            (:home issues)
+                              div
+                                {} $ :style $ merge ui/expand
+                                  {} $ :padding |8px
+                                comp-issues-list (>> states :list) issues
+                                =< nil 100
+                            (:archived issues)
+                              div
+                                {} $ :style $ merge ui/expand
+                                  {} $ :padding |8px
+                                comp-archived-list (>> states :list) issues
+                                =< nil 100
+                            (:issue selection)
+                              div
+                                {} $ :style $ merge ui/expand ({})
+                                match selection
+                                  (:some issue)
+                                    comp-issue-page
+                                      >> states $ :id issue
+                                      , issue
+                                  (:none) (<> "|Issue not found")
+                                =< nil 100
+                            (:profile members)
+                              comp-profile (:user store) members
+                            (:unknown)
+                              <> $ str $ :name (:router store)
+                          comp-login $ >> states :login
+                    comp-status-color $ :color store
+                    when dev? $ comp-inspect |Store store $ {} (:bottom 0) (:left 0) (:max-width |100%)
+                    comp-messages messages ({})
+                      fn (info d!)
+                        hint-fn $ {}
+                          :args $ [] (:: 'Map 'Dynamic 'Dynamic)
+                            :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
+                              :args $ [] 'Dynamic
+                          :return 'Unit
+                        d! $ schema/Op :session/remove-message $ decode-map-as
+                          .unwrap $ get info :id
+                          , 'String
+                    when dev? $ comp-reel (:reel-length store) ({})
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
+            :args $ [] (:: 'Map 'Dynamic 'Dynamic) (:: 'Option 'app.schema/ClientStore)
+            :features $ #{} :js-ffi
         'comp-issue-page $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-issue-page (states issue)
             let
@@ -225,6 +282,14 @@
                   {} (:text "|Some details")
                     :initial $ :desc issue
                     :multiline? true
+                logs $ :logs issue
+                log-ids $ .sort-by
+                  .to-list $ keys logs
+                  fn (id)
+                    hint-fn $ {}
+                      :args $ [] 'String
+                      :return 'Number
+                    negate $ :created-time $ .unwrap (get logs id)
               div
                 {} $ :style $ {} (:padding "|16px 0px")
                 div
@@ -235,19 +300,32 @@
                     =< 16 nil
                     a $ {} (:style ui/link) (:inner-text |Edit)
                       :on-click $ fn (e d!)
+                        hint-fn $ {}
+                          :args $ [] (:: 'Map 'Tag 'Dynamic)
+                            :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
+                              :args $ [] 'Dynamic
+                          :return 'Unit
                         .show content-plugin d! $ fn (text)
+                          hint-fn $ {}
+                            :args $ [] 'String
+                            :return 'Unit
                           when
                             not $ blank? text
-                            d! :issue/update $ {}
-                              :id $ :id issue
-                              :content text
+                            d! $ schema/Op :issue/update $ schema/IssueEdit :id (:id issue) :content (Option :some text) :desc (Option :none)
+                          , &unit
+                        , &unit
                   div ({})
                     comp-solved-tag $ :solved? issue
                     =< 8 nil
                     a $ {} (:inner-text |Toggle)
                       :style $ merge ui/link $ {} (:user-select :none)
                       :on-click $ fn (e d!)
-                        d! :issue/toggle-solved $ :id issue
+                        hint-fn $ {}
+                          :args $ [] (:: 'Map 'Tag 'Dynamic)
+                            :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
+                              :args $ [] 'Dynamic
+                          :return 'Unit
+                        d! $ schema/Op :issue/toggle-solved $ :id issue
                   div ({})
                     <> $ str "|Desc: " $ :desc issue
                     =< 16 nil
@@ -255,15 +333,22 @@
                       :style $ merge ui/link $ {} (:user-select :none)
                       :inner-text |Edit
                       :on-click $ fn (e d!)
+                        hint-fn $ {}
+                          :args $ [] (:: 'Map 'Tag 'Dynamic)
+                            :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
+                              :args $ [] 'Dynamic
+                          :return 'Unit
                         .show desc-plugin d! $ fn (text)
+                          hint-fn $ {}
+                            :args $ [] 'String
+                            :return 'Unit
                           when
                             not $ blank? text
-                            d! :issue/update $ {}
-                              :id $ :id issue
-                              :desc text
+                            d! $ schema/Op :issue/update $ schema/IssueEdit :id (:id issue) :content (Option :none) :desc (Option :some text)
+                          , &unit
+                        , &unit
                 comp-add-log (>> states :add-log) (:id issue)
-                if
-                  empty? $ :logs issue
+                if (empty? logs)
                   div
                     {} $ :style $ {} (:padding "|0px 8px")
                       :color $ hsl 0 0 60
@@ -271,18 +356,18 @@
                     <> |Empty
                   div ({})
                     list-> ({})
-                      -> (:logs issue) (.to-map) (.to-list)
-                        .sort-by $ fn (entry)
-                          negate $ :created-time $ last entry
-                        .map $ fn (entry)
-                          let[] (k log) entry $ [] k $ comp-log
-                            >> states $ :id log
-                            :id issue
-                            , log
+                      map log-ids $ fn (id)
+                        hint-fn $ {}
+                          :args $ [] 'String
+                          :return $ :: 'List 'Dynamic
+                        [] id $ comp-log (>> states id) (:id issue)
+                          .unwrap $ get logs id
                 .render content-plugin
                 .render desc-plugin
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
+            :args $ [] (:: 'Map 'Dynamic 'Dynamic) 'app.schema/Issue
+            :features $ #{} :js-ffi
         'comp-log $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-log (states issue-id log)
             let
@@ -305,16 +390,25 @@
                   =< 16 nil
                   a $ {} (:style ui/link) (:inner-text |Edit)
                     :on-click $ fn (e d!)
+                      hint-fn $ {}
+                        :args $ [] (:: 'Map 'Tag 'Dynamic)
+                          :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
+                            :args $ [] 'Dynamic
+                        :return 'Unit
                       .show content-plugin d! $ fn (text)
+                        hint-fn $ {}
+                          :args $ [] 'String
+                          :return 'Unit
                         when
                           not $ blank? text
-                          d! :issue/update-log $ {}
-                            :id $ :id log
-                            :issue-id issue-id
-                            :content text
+                          d! $ schema/Op :issue/update-log $ schema/LogEdit :id (:id log) :issue-id issue-id :content text
+                        , &unit
+                      , &unit
                 .render content-plugin
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
+            :args $ [] (:: 'Map 'Dynamic 'Dynamic) 'String 'app.schema/Log
+            :features $ #{} :js-ffi
         'comp-offline $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-offline ()
             div
@@ -372,27 +466,43 @@
             app.config :as config
             app.comp.issue :refer $ comp-issues-list comp-archived-list comp-solved-tag comp-time
             respo-alerts.core :refer $ use-prompt
-            |dayjs :default dayjs
             respo-md.comp.md :refer $ comp-md-block
     'app.comp.issue $ %{} 'FileEntry
       :defs $ {}
+        'DayjsHost $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ deftrait DayjsHost
+            .format $ :: 'Fn $ {}
+              :args $ [] 'app.comp.issue/DayjsHost 'String
+              :return 'String
+          :examples $ []
+          :ffi $ {} (:backend :js) (:kind :external-object) (:target :browser)
+            :names $ {} $ :format |format
+          :schema $ :: 'Trait
         'comp-archived-list $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-archived-list (states issues)
-            div
-              {} $ :style ui/column
-              div $ {} $ :style ui/row-parted
-              =< nil 8
-              list-> ({})
-                -> issues (.to-map)
-                  .map-list $ fn (entry)
-                    let[] (k issue) entry $ [] k (:touched-time issue)
-                      comp-issue (>> states k) issue
-                  .sort-by $ fn (triple)
-                    negate $ nth triple 1
-                  .map $ fn (triple)
-                    [] (nth triple 0) (nth triple 2)
+            let
+                ids $ .sort-by
+                  .to-list $ keys issues
+                  fn (id)
+                    hint-fn $ {}
+                      :args $ [] 'String
+                      :return 'Number
+                    negate $ :touched-time $ .unwrap (get issues id)
+              div
+                {} $ :style ui/column
+                div $ {} $ :style ui/row-parted
+                =< nil 8
+                list-> ({})
+                  map ids $ fn (id)
+                    hint-fn $ {}
+                      :args $ [] 'String
+                      :return $ :: 'List 'Dynamic
+                    [] id $ comp-issue (>> states id)
+                      .unwrap $ get issues id
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
+            :args $ [] (:: 'Map 'Dynamic 'Dynamic) (:: 'Map 'String 'app.schema/Issue)
+            :features $ #{} :js-ffi
         'comp-issue $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-issue (states issue)
             div
@@ -404,8 +514,13 @@
               div
                 {}
                   :on-click $ fn (e d!)
-                    d! :router/change $ {} (:name :issue)
-                      :data $ :id issue
+                    hint-fn $ {}
+                      :args $ [] (:: 'Map 'Tag 'Dynamic)
+                        :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
+                          :args $ [] 'Dynamic
+                      :return 'Unit
+                    d! $ schema/Op :router/change $ struct-with schema/router (:name :issue)
+                      :data $ Option :some $ :id issue
                   :style $ {} $ :cursor :pointer
                 <> $ :content issue
               div
@@ -415,36 +530,55 @@
                 =< 16 nil
                 comp-solved-tag $ :solved? issue
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
+            :args $ [] (:: 'Map 'Dynamic 'Dynamic) 'app.schema/Issue
+            :features $ #{} :js-ffi
         'comp-issues-list $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-issues-list (states issues)
             let
                 add-plugin $ use-prompt (>> states :prompt)
-                  {} (:text "|New topic name:") (; :multiline? true)
+                  {} $ :text "|New topic name:"
+                ids $ .sort-by
+                  .to-list $ keys issues
+                  fn (id)
+                    hint-fn $ {}
+                      :args $ [] 'String
+                      :return 'Number
+                    negate $ :touched-time $ .unwrap (get issues id)
               div
                 {} $ :style ui/column
                 div
                   {} $ :style ui/row-parted
                   button $ {} (:inner-text "|New Topic") (:style ui/button)
                     :on-click $ fn (e d!)
+                      hint-fn $ {}
+                        :args $ [] (:: 'Map 'Tag 'Dynamic)
+                          :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
+                            :args $ [] 'Dynamic
+                        :return 'Unit
                       .show add-plugin d! $ fn (text)
-                        if
+                        hint-fn $ {}
+                          :args $ [] 'String
+                          :return 'Unit
+                        when
                           not $ blank? text
-                          d! :issue/add text
+                          d! $ schema/Op :issue/add text
+                        , &unit
+                      , &unit
                   span $ {}
                 =< nil 8
                 list-> ({})
-                  -> issues (.to-map)
-                    .map-list $ fn (entry)
-                      let[] (k issue) entry $ [] k (:touched-time issue)
-                        comp-issue (>> states k) issue
-                    .sort-by $ fn (triple)
-                      negate $ nth triple 1
-                    .map $ fn (triple)
-                      [] (nth triple 0) (nth triple 2)
+                  map ids $ fn (id)
+                    hint-fn $ {}
+                      :args $ [] 'String
+                      :return $ :: 'List 'Dynamic
+                    [] id $ comp-issue (>> states id)
+                      .unwrap $ get issues id
                 .render add-plugin
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
+            :args $ [] (:: 'Map 'Dynamic 'Dynamic) (:: 'Map 'String 'app.schema/Issue)
+            :features $ #{} :js-ffi
         'comp-solved-tag $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-solved-tag (solved?)
             div
@@ -464,15 +598,26 @@
           :code $ quote $ defcomp comp-time (timestamp)
             span
               {} $ :style $ {} (:font-family ui/font-fancy)
-              <> $ -> timestamp (dayjs) (.!format "|MM-DD HH:mm")
+              <> $ format-time timestamp "|MM-DD HH:mm"
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
+            :args $ [] 'Number
+            :features $ #{} :js-ffi
+        'format-time $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn format-time (timestamp pattern)
+            let
+                value $ js-cast (dayjs timestamp) 'app.comp.issue/DayjsHost
+              value .format pattern
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'String)
+            :args $ [] 'Number 'String
+            :features $ #{} :js-ffi
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.issue
           :require
             respo-ui.core :refer $ hsl
             respo-ui.core :as ui
-            respo.core :refer $ defcomp <> >> div span button input pre list-> a span
+            respo.core :refer $ defcomp <> >> div span button input pre list-> a
             respo.comp.space :refer $ =<
             app.schema :as schema
             app.config :as config
@@ -536,7 +681,7 @@
                       :on-click $ on-submit (:username state) (:password state) false
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] $ :: 'Map 'Tag 'Dynamic
+            :args $ [] $ :: 'Map 'Dynamic 'Dynamic
             :features $ #{} :js-ffi
         'initial-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def initial-state (schema/LoginState :username | :password |)
@@ -607,7 +752,7 @@
                   <> $ str count-members
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] (:: 'Map 'Tag 'Dynamic) 'Bool 'Number
+            :args $ [] (:: 'Map 'Dynamic 'Dynamic) 'Bool 'Number
             :features $ #{} :js-ffi
         'on-navigate $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn on-navigate (page)
@@ -645,7 +790,9 @@
                 {} $ :padding 16
               div
                 {} $ :style $ {} (:font-family ui/font-fancy) (:font-size 32) (:font-weight 100)
-                <> $ str "|Hello! " $ :name user
+                <> $ str "|Hello! " $ match user
+                  (:some account) (:name account)
+                  (:none) |Guest
               =< nil 16
               div
                 {} $ :style ui/row
@@ -653,31 +800,53 @@
                 =< 8 nil
                 list->
                   {} $ :style ui/row
-                  -> members (.to-list)
-                    map $ fn (pair)
-                      let[] (k username) pair $ [] k $ div
-                        {} $ :style $ {} (:padding "|0 8px")
-                          :border $ str "|1px solid " $ hsl 0 0 80
-                          :border-radius |16px
-                          :margin "|0 4px"
-                        <> username
+                  map
+                    .to-list $ keys members
+                    fn (k)
+                      hint-fn $ {}
+                        :args $ [] 'Number
+                        :return $ :: 'List 'Dynamic
+                      let
+                          username $ .unwrap $ get members k
+                        [] k $ div
+                          {} $ :style $ {} (:padding "|0 8px")
+                            :border $ str "|1px solid " $ hsl 0 0 80
+                            :border-radius |16px
+                            :margin "|0 4px"
+                          <> $ .unwrap-or username |Guest
               =< nil 48
               div ({})
                 button
                   {}
                     :style $ merge ui/button
                     :on-click $ fn (e d!)
-                      js/location.replace $ str js/location.origin |?time= $ js/Date.now
+                      hint-fn $ {}
+                        :args $ [] (:: 'Map 'Tag 'Dynamic)
+                          :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
+                            :args $ [] 'Dynamic
+                        :return 'Unit
+                      browser/location-replace! $ str
+                        :origin $ browser/location-snapshot
+                        , |?time= $ shared/now-ms
                   <> |Refresh
                 =< 8 nil
                 button
                   {}
                     :style $ merge ui/button $ {} (:color :red) (:border-color :red)
-                    :on-click $ fn (e dispatch!) (dispatch! :user/log-out nil)
-                      .!removeItem js/localStorage $ :storage-key config/site
+                    :on-click $ fn (e dispatch!)
+                      hint-fn $ {}
+                        :args $ [] (:: 'Map 'Tag 'Dynamic)
+                          :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
+                            :args $ [] 'Dynamic
+                        :return 'Unit
+                      dispatch! $ schema/Op :user/log-out
+                      browser/storage-remove! $ :storage-key config/site
                   <> "|Log out"
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
+            :args $ [] (:: 'Option 'app.schema/UserView)
+              :: 'Map 'Number $ :: 'Option 'String
+            :features $ #{} :js-ffi
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.profile
           :require
@@ -687,6 +856,8 @@
             respo.core :refer $ defcomp list-> <> span div button
             respo.comp.space :refer $ =<
             app.config :as config
+            js-ffi.browser :as browser
+            js-ffi.shared :as shared
     'app.config $ %{} 'FileEntry
       :defs $ {}
         'Site $ %{} 'CodeEntry (:doc |)
