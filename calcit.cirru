@@ -872,7 +872,7 @@
           :schema $ :: 'Bool
         'site $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def site
-            %{} Site (:port 11028) (:title "|Walnut log") (:icon |https://cdn.tiye.me/logo/walnut.jpeg) (:theme "|hsl(2deg 76% 36%)") (:storage-key |walnut-log) (:storage-file |storage.cirru)
+            Site :port 11028 :title "|Walnut log" :icon |https://cdn.tiye.me/logo/walnut.jpeg :theme "|hsl(2deg 76% 36%)" :storage-key |walnut-log :storage-file |storage.cirru
           :examples $ []
           :schema $ :: 'app.config/Site
       :ns $ %{} 'NsEntry (:doc |)
@@ -1100,24 +1100,27 @@
                       :: 'Option 'Dynamic
                     fn (item)
                       decode-map-as (user-input item) 'app.schema/UserView
-                Result :ok $ %{} ClientStore
-                  :logged-in? $ decode-map-as
+                Result :ok $ ClientStore :logged-in?
+                  decode-map-as
                     .unwrap $ get source :logged-in?
                     , 'Bool
-                  :session $ decode-map-as
-                    session-input $ .unwrap $ get source :session
-                    , 'app.schema/Session
-                  :user user
-                  :router $ decode-router-view $ .unwrap (get source :router)
-                  :count $ decode-map-as
-                    .unwrap $ get source :count
-                    , 'Number
-                  :color $ decode-map-as
-                    .unwrap $ get source :color
-                    , 'String
-                  :reel-length $ decode-map-as
-                    .unwrap $ get source :reel-length
-                    , 'Number
+                  , :session
+                    decode-map-as
+                      session-input $ .unwrap $ get source :session
+                      , 'app.schema/Session
+                    , :user user :router
+                      decode-router-view $ .unwrap $ get source :router
+                      , :count
+                        decode-map-as
+                          .unwrap $ get source :count
+                          , 'Number
+                        , :color
+                          decode-map-as
+                            .unwrap $ get source :color
+                            , 'String
+                          , :reel-length $ decode-map-as
+                            .unwrap $ get source :reel-length
+                            , 'Number
               fn (detail)
                 hint-fn $ {}
                   :args $ [] 'String
@@ -1258,15 +1261,17 @@
                     optional-input $ get source :router
                     :: 'Option 'Dynamic
                   , router-input
-              %{} RouterView
-                :name $ decode-map-as
+              RouterView :name
+                decode-map-as
                   .unwrap $ get source :name
                   , 'Tag
-                :title $ decode-map-as
-                  optional-input $ get source :title
-                  :: 'Option 'String
-                :data $ decode-page $ .unwrap (get source :data)
-                :router $ decode-map-as nested $ :: 'Option 'app.schema/Router
+                , :title
+                  decode-map-as
+                    optional-input $ get source :title
+                    :: 'Option 'String
+                  , :data
+                    decode-page $ .unwrap $ get source :data
+                    , :router $ decode-map-as nested $ :: 'Option 'app.schema/Router
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'app.schema/RouterView)
             :args $ [] 'Dynamic
@@ -1775,11 +1780,11 @@
             :args $ [] 'Number
         'stop-tasks! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn stop-tasks! ()
-            .each @*tasks $ fn (task)
+            .each @*tasks $ fn (raw-task)
               hint-fn $ {}
-                :args $ [] 'calcit.core/FfiTask
+                :args $ [] 'Dynamic
                 :return 'Unit
-              .cancel! task
+              .cancel! $ decode-map-as raw-task 'calcit.core/FfiTask
             reset! *tasks $ []
             , &unit
           :examples $ []
@@ -1799,11 +1804,12 @@
                 complete? $ ref true
               .each
                 .to-list $ keys $ :sessions db
-                fn (sid)
+                fn (raw-sid)
                   hint-fn $ {}
-                    :args $ [] 'Number
+                    :args $ [] 'Dynamic
                     :return 'Unit
                   let
+                      sid $ decode-map-as raw-sid 'Number
                       session $ .unwrap $ get (:sessions db) sid
                       old-store $ let
                           cached $ get @*client-caches sid
