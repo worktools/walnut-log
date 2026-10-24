@@ -1,10 +1,10 @@
 {
   "dependencies": {
-    "@calcit/procs": "0.29.0",
+    "@calcit/procs": "0.31.0-alpha.2",
     "shortid": "^2.2.16"
   },
   "scripts": {
-    "compile-page": "calcit js",
+    "compile-page": "calcit --timeout 0 js",
     "release-page": "vite build --base=./",
     "watch-page": "calcit -w",
     "dev": "vite --host 127.0.0.1"

@@ -6,7 +6,7 @@
     :default $ {} (:description |) (:init-fn 'app.client/main!) (:mode :js) (:reload-fn 'app.client/reload!) (:target :browser)
       :feature-policy $ {}
       :modules $ [] |respo.calcit/ |recollect/ |memof/ |respo-ui.calcit/ |ws-edn.calcit/ |cumulo-util.calcit/ |respo-message.calcit/ |cumulo-reel.calcit/ |alerts.calcit/ |respo-markdown.calcit/ |js-ffi/
-      :type-slots $ {}
+      :type-slots $ {} $ :dispatch-op |app.schema/Op
     :server $ {} (:description |) (:init-fn 'app.server/main!) (:mode :native) (:reload-fn 'app.server/reload!) (:target :native)
       :feature-policy $ {}
       :modules $ [] |recollect/ |memof/ |ws-edn.calcit/ |cumulo-util.calcit/ |cumulo-reel.calcit/ |calcit-wss/ |calcit.std/
@@ -15,13 +15,13 @@
     'app.client $ %{} 'FileEntry
       :defs $ {}
         '*states $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defatom *states
+          :code $ quote $ defref *states
             {} $ :states $ {}
               :cursor $ []
           :examples $ []
           :schema $ :: 'Ref $ :: 'Map 'Tag 'Dynamic
         '*store $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defatom *store (Option :none)
+          :code $ quote $ defref *store (Option :none)
           :examples $ []
           :schema $ :: 'Ref $ :: 'Option 'app.schema/ClientStore
         'connect! $ %{} 'CodeEntry (:doc |)
@@ -49,19 +49,20 @@
           :schema $ :: 'Fn $ {} (:return 'ws-edn.client/WsClient)
             :args $ []
         'dispatch! $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn dispatch! (value)
-            match (schema/decode-ui-action value)
-              (:err detail) (shared/console-error! detail)
-              (:ok action)
-                match action
-                  (:states cursor state)
-                    reset! *states $ decode-map-as (update-states @*states cursor state) (:: 'Map 'Tag 'Dynamic)
-                  (:effect/connect) (connect!)
-                  (:remote op) (ws-send! op)
+          :code $ quote $ defn dispatch! (op)
+            match op
+              (:states cursor state)
+                reset! *states $ decode-map-as
+                  update-states @*states
+                    decode-map-as cursor $ :: 'List 'Dynamic
+                    , state
+                  :: 'Map 'Tag 'Dynamic
+              (:effect/connect) (connect!)
+              _ $ ws-send! op
             , &unit
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] 'Dynamic
+            :args $ [] 'app.schema/Op
             :features $ #{} :js-ffi
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
@@ -184,8 +185,8 @@
                   :on-click $ fn (e d!)
                     hint-fn $ {}
                       :args $ [] (:: 'Map 'Tag 'Dynamic)
-                        :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
-                          :args $ [] 'Dynamic
+                        :: 'Fn $ {} (:return 'Unit)
+                          :args $ [] *dispatch-op
                       :return 'Unit
                     .show add-plugin d! $ fn (text)
                       hint-fn $ {}
@@ -261,8 +262,8 @@
                       fn (info d!)
                         hint-fn $ {}
                           :args $ [] (:: 'Map 'Dynamic 'Dynamic)
-                            :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
-                              :args $ [] 'Dynamic
+                            :: 'Fn $ {} (:return 'Unit)
+                              :args $ [] *dispatch-op
                           :return 'Unit
                         d! $ schema/Op :session/remove-message $ decode-map-as
                           .unwrap $ get info :id
@@ -302,8 +303,8 @@
                       :on-click $ fn (e d!)
                         hint-fn $ {}
                           :args $ [] (:: 'Map 'Tag 'Dynamic)
-                            :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
-                              :args $ [] 'Dynamic
+                            :: 'Fn $ {} (:return 'Unit)
+                              :args $ [] *dispatch-op
                           :return 'Unit
                         .show content-plugin d! $ fn (text)
                           hint-fn $ {}
@@ -322,8 +323,8 @@
                       :on-click $ fn (e d!)
                         hint-fn $ {}
                           :args $ [] (:: 'Map 'Tag 'Dynamic)
-                            :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
-                              :args $ [] 'Dynamic
+                            :: 'Fn $ {} (:return 'Unit)
+                              :args $ [] *dispatch-op
                           :return 'Unit
                         d! $ schema/Op :issue/toggle-solved $ :id issue
                   div ({})
@@ -335,8 +336,8 @@
                       :on-click $ fn (e d!)
                         hint-fn $ {}
                           :args $ [] (:: 'Map 'Tag 'Dynamic)
-                            :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
-                              :args $ [] 'Dynamic
+                            :: 'Fn $ {} (:return 'Unit)
+                              :args $ [] *dispatch-op
                           :return 'Unit
                         .show desc-plugin d! $ fn (text)
                           hint-fn $ {}
@@ -392,8 +393,8 @@
                     :on-click $ fn (e d!)
                       hint-fn $ {}
                         :args $ [] (:: 'Map 'Tag 'Dynamic)
-                          :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
-                            :args $ [] 'Dynamic
+                          :: 'Fn $ {} (:return 'Unit)
+                            :args $ [] *dispatch-op
                         :return 'Unit
                       .show content-plugin d! $ fn (text)
                         hint-fn $ {}
@@ -429,10 +430,10 @@
                   :on-click $ fn (e d!)
                     hint-fn $ {}
                       :args $ [] (:: 'Map 'Tag 'Dynamic)
-                        :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
-                          :args $ [] 'Dynamic
+                        :: 'Fn $ {} (:return 'Unit)
+                          :args $ [] *dispatch-op
                       :return 'Unit
-                    d! :effect/connect
+                    d! $ :: :effect/connect
                 <> "|No connection..." $ {} (:font-family ui/font-fancy) (:font-size 24) (:color :white)
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
@@ -516,8 +517,8 @@
                   :on-click $ fn (e d!)
                     hint-fn $ {}
                       :args $ [] (:: 'Map 'Tag 'Dynamic)
-                        :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
-                          :args $ [] 'Dynamic
+                        :: 'Fn $ {} (:return 'Unit)
+                          :args $ [] *dispatch-op
                       :return 'Unit
                     d! $ schema/Op :router/change $ struct-with schema/router (:name :issue)
                       :data $ Option :some $ :id issue
@@ -553,8 +554,8 @@
                     :on-click $ fn (e d!)
                       hint-fn $ {}
                         :args $ [] (:: 'Map 'Tag 'Dynamic)
-                          :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
-                            :args $ [] 'Dynamic
+                          :: 'Fn $ {} (:return 'Unit)
+                            :args $ [] *dispatch-op
                         :return 'Unit
                       .show add-plugin d! $ fn (text)
                         hint-fn $ {}
@@ -647,11 +648,11 @@
                         :on-input $ fn (e d!)
                           hint-fn $ {}
                             :args $ [] (:: 'Map 'Tag 'Dynamic)
-                              :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
-                                :args $ [] 'Dynamic
+                              :: 'Fn $ {} (:return 'Unit)
+                                :args $ [] *dispatch-op
                             :return 'Unit
-                          d! cursor $ struct-with state $ :username
-                            decode-map-as
+                          d! $ :: :states cursor $ struct-with state
+                            :username $ decode-map-as
                               .unwrap $ get e :value
                               , 'String
                     =< nil 8
@@ -662,11 +663,11 @@
                         :on-input $ fn (e d!)
                           hint-fn $ {}
                             :args $ [] (:: 'Map 'Tag 'Dynamic)
-                              :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
-                                :args $ [] 'Dynamic
+                              :: 'Fn $ {} (:return 'Unit)
+                                :args $ [] *dispatch-op
                             :return 'Unit
-                          d! cursor $ struct-with state $ :password
-                            decode-map-as
+                          d! $ :: :states cursor $ struct-with state
+                            :password $ decode-map-as
                               .unwrap $ get e :value
                               , 'String
                   =< nil 8
@@ -692,8 +693,8 @@
             fn (e dispatch!)
               hint-fn $ {}
                 :args $ [] (:: 'Map 'Tag 'Dynamic)
-                  :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
-                    :args $ [] 'Dynamic
+                  :: 'Fn $ {} (:return 'Unit)
+                    :args $ [] *dispatch-op
                 :return 'Unit
               dispatch! $ if signup? (schema/Op :user/sign-up username password) (schema/Op :user/log-in username password)
               browser/storage-set! (:storage-key config/site)
@@ -704,8 +705,8 @@
             :features $ #{} :js-ffi
             :return $ :: 'Fn $ {} (:return 'Unit)
               :args $ [] (:: 'Map 'Tag 'Dynamic)
-                :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
-                  :args $ [] 'Dynamic
+                :: 'Fn $ {} (:return 'Unit)
+                  :args $ [] '*dispatch-op
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.login
           :require
@@ -759,8 +760,8 @@
             fn (e d!)
               hint-fn $ {}
                 :args $ [] (:: 'Map 'Tag 'Dynamic)
-                  :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
-                    :args $ [] 'Dynamic
+                  :: 'Fn $ {} (:return 'Unit)
+                    :args $ [] *dispatch-op
                 :return 'Unit
               d! $ schema/Op :router/change $ struct-with schema/router (:name page)
           :examples $ []
@@ -769,8 +770,8 @@
             :features $ #{} :js-ffi
             :return $ :: 'Fn $ {} (:return 'Unit)
               :args $ [] (:: 'Map 'Tag 'Dynamic)
-                :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
-                  :args $ [] 'Dynamic
+                :: 'Fn $ {} (:return 'Unit)
+                  :args $ [] '*dispatch-op
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.navigation
           :require
@@ -822,8 +823,8 @@
                     :on-click $ fn (e d!)
                       hint-fn $ {}
                         :args $ [] (:: 'Map 'Tag 'Dynamic)
-                          :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
-                            :args $ [] 'Dynamic
+                          :: 'Fn $ {} (:return 'Unit)
+                            :args $ [] *dispatch-op
                         :return 'Unit
                       browser/location-replace! $ str
                         :origin $ browser/location-snapshot
@@ -836,8 +837,8 @@
                     :on-click $ fn (e dispatch!)
                       hint-fn $ {}
                         :args $ [] (:: 'Map 'Tag 'Dynamic)
-                          :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
-                            :args $ [] 'Dynamic
+                          :: 'Fn $ {} (:return 'Unit)
+                            :args $ [] *dispatch-op
                         :return 'Unit
                       dispatch! $ schema/Op :user/log-out
                       browser/storage-remove! $ :storage-key config/site
@@ -871,7 +872,7 @@
           :schema $ :: 'Bool
         'site $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def site
-            %{} Site (:port 11028) (:title "|Walnut log") (:icon |https://cdn.tiye.me/logo/walnut.jpeg) (:theme "|hsl(2deg 76% 36%)") (:storage-key |walnut-log) (:storage-file |storage.cirru)
+            Site :port 11028 :title "|Walnut log" :icon |https://cdn.tiye.me/logo/walnut.jpeg :theme "|hsl(2deg 76% 36%)" :storage-key |walnut-log :storage-file |storage.cirru
           :examples $ []
           :schema $ :: 'app.config/Site
       :ns $ %{} 'NsEntry (:doc |)
@@ -947,7 +948,27 @@
           :examples $ []
           :schema $ :: 'StructDef
         'Op $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defenum Op (:session/connect) (:session/disconnect) (:session/remove-message 'String) (:user/log-in 'String 'String) (:user/sign-up 'String 'String) (:user/log-out) (:router/change 'app.schema/Router) (:issue/add 'String) (:issue/del 'String) (:issue/update 'app.schema/IssueEdit) (:issue/toggle-solved 'String) (:issue/touch 'String) (:issue/add-log 'app.schema/AddLog) (:issue/update-log 'app.schema/LogEdit) (:issue/del-log 'app.schema/LogRef) (:effect/persist) (:reel/reset) (:reel/merge)
+          :code $ quote $ defenum Op
+            :states (:: 'List 'Dynamic) 'Dynamic
+            :effect/connect
+            :session/connect
+            :session/disconnect
+            :session/remove-message 'String
+            :user/log-in 'String 'String
+            :user/sign-up 'String 'String
+            :user/log-out
+            :router/change 'app.schema/Router
+            :issue/add 'String
+            :issue/del 'String
+            :issue/update 'app.schema/IssueEdit
+            :issue/toggle-solved 'String
+            :issue/touch 'String
+            :issue/add-log 'app.schema/AddLog
+            :issue/update-log 'app.schema/LogEdit
+            :issue/del-log 'app.schema/LogRef
+            :effect/persist
+            :reel/reset
+            :reel/merge
           :examples $ []
           :schema $ :: 'EnumDef
         'Page $ %{} 'CodeEntry (:doc |)
@@ -1044,7 +1065,9 @@
         'apply-store-patch $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn apply-store-patch (store changes)
             match
-              recollect.patch/try-patch-twig (.unwrap-or store nil) changes
+              recollect.patch/try-patch-twig
+                if (.some? store) (.unwrap store) nil
+                , changes
               (:err detail)
                 Result :err $ recollect.patch/patch-error-message detail
               (:ok value) (decode-client-store value)
@@ -1077,24 +1100,27 @@
                       :: 'Option 'Dynamic
                     fn (item)
                       decode-map-as (user-input item) 'app.schema/UserView
-                Result :ok $ %{} ClientStore
-                  :logged-in? $ decode-map-as
+                Result :ok $ ClientStore :logged-in?
+                  decode-map-as
                     .unwrap $ get source :logged-in?
                     , 'Bool
-                  :session $ decode-map-as
-                    session-input $ .unwrap $ get source :session
-                    , 'app.schema/Session
-                  :user user
-                  :router $ decode-router-view $ .unwrap (get source :router)
-                  :count $ decode-map-as
-                    .unwrap $ get source :count
-                    , 'Number
-                  :color $ decode-map-as
-                    .unwrap $ get source :color
-                    , 'String
-                  :reel-length $ decode-map-as
-                    .unwrap $ get source :reel-length
-                    , 'Number
+                  , :session
+                    decode-map-as
+                      session-input $ .unwrap $ get source :session
+                      , 'app.schema/Session
+                    , :user user :router
+                      decode-router-view $ .unwrap $ get source :router
+                      , :count
+                        decode-map-as
+                          .unwrap $ get source :count
+                          , 'Number
+                        , :color
+                          decode-map-as
+                            .unwrap $ get source :color
+                            , 'String
+                          , :reel-length $ decode-map-as
+                            .unwrap $ get source :reel-length
+                            , 'Number
               fn (detail)
                 hint-fn $ {}
                   :args $ [] 'String
@@ -1235,15 +1261,17 @@
                     optional-input $ get source :router
                     :: 'Option 'Dynamic
                   , router-input
-              %{} RouterView
-                :name $ decode-map-as
+              RouterView :name
+                decode-map-as
                   .unwrap $ get source :name
                   , 'Tag
-                :title $ decode-map-as
-                  optional-input $ get source :title
-                  :: 'Option 'String
-                :data $ decode-page $ .unwrap (get source :data)
-                :router $ decode-map-as nested $ :: 'Option 'app.schema/Router
+                , :title
+                  decode-map-as
+                    optional-input $ get source :title
+                    :: 'Option 'String
+                  , :data
+                    decode-page $ .unwrap $ get source :data
+                    , :router $ decode-map-as nested $ :: 'Option 'app.schema/Router
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'app.schema/RouterView)
             :args $ [] 'Dynamic
@@ -1586,11 +1614,11 @@
     'app.server $ %{} 'FileEntry
       :defs $ {}
         '*client-caches $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defatom *client-caches ({})
+          :code $ quote $ defref *client-caches ({})
           :examples $ []
           :schema $ :: 'Ref $ :: 'Map 'Number 'app.schema/ClientStore
         '*initial-db $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defatom *initial-db
+          :code $ quote $ defref *initial-db
             if (path-exists? storage-file)
               do (println "|Found local EDN data")
                 match
@@ -1602,16 +1630,16 @@
           :examples $ []
           :schema $ :: 'Ref 'app.schema/Db
         '*reader-reel $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defatom *reader-reel @*reel
+          :code $ quote $ defref *reader-reel @*reel
           :examples $ []
           :schema $ :: 'Ref $ :: 'cumulo-reel.core/ReelState 'app.schema/Db
         '*reel $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defatom *reel
+          :code $ quote $ defref *reel
             ReelState :base @*initial-db :db @*initial-db :records ([]) :merged? false
           :examples $ []
           :schema $ :: 'Ref $ :: 'cumulo-reel.core/ReelState 'app.schema/Db
         '*tasks $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defatom *tasks ([])
+          :code $ quote $ defref *tasks ([])
           :examples $ []
           :schema $ :: 'Ref $ :: 'List 'calcit.core/FfiTask
         'dispatch! $ %{} 'CodeEntry (:doc |)
@@ -1752,11 +1780,11 @@
             :args $ [] 'Number
         'stop-tasks! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn stop-tasks! ()
-            .each @*tasks $ fn (task)
+            .each @*tasks $ fn (raw-task)
               hint-fn $ {}
-                :args $ [] 'calcit.core/FfiTask
+                :args $ [] 'Dynamic
                 :return 'Unit
-              .cancel! task
+              .cancel! $ decode-map-as raw-task 'calcit.core/FfiTask
             reset! *tasks $ []
             , &unit
           :examples $ []
@@ -1776,13 +1804,16 @@
                 complete? $ ref true
               .each
                 .to-list $ keys $ :sessions db
-                fn (sid)
+                fn (raw-sid)
                   hint-fn $ {}
-                    :args $ [] 'Number
+                    :args $ [] 'Dynamic
                     :return 'Unit
                   let
+                      sid $ decode-map-as raw-sid 'Number
                       session $ .unwrap $ get (:sessions db) sid
-                      old-store $ .unwrap-or (get @*client-caches sid) nil
+                      old-store $ let
+                          cached $ get @*client-caches sid
+                        if (.some? cached) (.unwrap cached) nil
                       new-store $ twig-container db session $ :records reel
                       changes $ diff-twig old-store new-store $ {} (:key :id)
                     when
@@ -1944,6 +1975,8 @@
               (:effect/persist) db
               (:reel/reset) db
               (:reel/merge) db
+              (:states cursor state) db
+              (:effect/connect) db
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'app.schema/Db)
             :args $ [] 'app.schema/Db 'app.schema/Op 'Number 'String 'Number
