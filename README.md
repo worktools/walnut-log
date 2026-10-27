@@ -6,7 +6,7 @@
 
 - Frontend
 
-Use the released Calcit/procs prerelease 0.31.0-alpha.7, Caps 0.1.1, Node.js 24 and Yarn 4.18.0. The source and module manifest are `calcit.cirru` and `deps.cirru`; retired snapshot files are not used.
+Use the released Calcit/procs 0.31.0, Caps 0.1.1, Node.js 24 and Yarn 4.18.0. The source and module manifest are `calcit.cirru` and `deps.cirru`; retired snapshot files are not used.
 
 Build the page into `dist/`:
 
