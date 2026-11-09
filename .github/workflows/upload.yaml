@@ -26,7 +26,7 @@ jobs:
           corepack enable
           corepack prepare yarn@4.18.0 --activate
 
-      - uses: calcit-lang/setup-calcit@v1.5.0
+      - uses: calcit-lang/setup-calcit@v1.5.1
         with:
           tools: calcit,caps
           deps-file: deps.cirru
@@ -49,8 +49,13 @@ jobs:
 
       - name: Check target-specific source and tests
         run: |
+          set -euo pipefail
+          calcit edit format
+          git diff --exit-code --quiet -- calcit.cirru
           calcit --check-only --ns 'app.$meta' --ns app.config --ns app.schema --ns app.client --ns app.comp.container --ns app.comp.issue --ns app.comp.login --ns app.comp.navigation --ns app.comp.profile
           calcit --entry server --check-only --ns 'app.$meta' --ns app.config --ns app.schema --ns app.server --ns app.twig.container --ns app.twig.user --ns app.updater --ns app.updater.issue --ns app.updater.router --ns app.updater.session --ns app.updater.user
+          calcit fix --workflow strict --verify --format json | jq -e '.data.workflow.status == "passed" and .diagnostics == []'
+          calcit --entry server fix --workflow strict --verify --format json | jq -e '.data.workflow.status == "passed" and .diagnostics == []'
           calcit --entry server test --require-match
           calcit analyze weak-types --only deprecated-call --summary-only --format json | jq -e '.data.summary.calls == 0'
 
@@ -69,7 +74,7 @@ jobs:
 
       - name: Upload frontend to COS and verify public files
         if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-        uses: worktools/cos-upload-action@v1.2.0
+        uses: worktools/cos-upload-action@8c4f3d09a4478b0d4c8698ffb94759b41831cba8 # v1.3.0
         with:
           source-dir: dist
           bucket: ${{ secrets.COS_BUCKET }}
