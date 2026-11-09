@@ -2,11 +2,18 @@
 
 > Some logs...
 
+### 0.38.0 升级对使用者的影响
+
+请一并更新前端和后端。后端部署目录仍为 `/servers/calcium-workflow/`，启动命令为
+`calcit --entry server`。先在服务器安装 Calcit 0.38.0 和配套 native 模块，再按原流程重启。
+现有存档和 WebSocket 数据格式保持兼容。页面事件使用 `RespoEvent`，状态路径使用
+Respo 的 `CoordKey` 联合类型。
+
 ### Deployment
 
 - Frontend
 
-Use the released Calcit/procs 0.31.0, Caps 0.1.1, Node.js 24 and Yarn 4.18.0. The source and module manifest are `calcit.cirru` and `deps.cirru`; retired snapshot files are not used.
+Use the released Calcit/procs 0.38.0, Caps 0.1.1, Node.js 24 and Yarn 4.18.0. The source and module manifest are `calcit.cirru` and `deps.cirru`; retired snapshot files are not used.
 
 Build the page into `dist/`:
 
@@ -74,7 +81,7 @@ pm2 start ecosystem.config.js --env production
 
 For local development, run `mode=dev calcit --entry server` and `yarn dev` in separate terminals. Open the Vite URL with `?mode=dev`; `host` and `port` query parameters override the development WebSocket address. Production uses `wss://<host>/ws`.
 
-CI checks all browser and native project definitions with their own target, runs attached tests, and rejects deprecated calls. Frontend assets use `https://cos-sh.tiye.me/worktools/walnut-log/` (PR previews use `pr/<number>/`). COS action v1.2.0 performs the upload and public checksum verification itself; no extra verification script is needed. Configure `COS_BUCKET`, `COS_SECRET_ID`, `COS_SECRET_KEY` and the existing `rsync_private_key` as repository or accessible organization secrets.
+CI checks all browser and native project definitions with their own target, runs attached tests, and rejects deprecated calls. Frontend assets use `https://cos-sh.tiye.me/worktools/walnut-log/` (PR previews use `pr/<number>/`). COS action v1.3.0 performs the upload and public checksum verification itself; no extra verification script is needed. Configure `COS_BUCKET`, `COS_SECRET_ID`, `COS_SECRET_KEY` and the existing `rsync_private_key` as repository or accessible organization secrets.
 
 The original frontend destination `/web-assets/repo/worktools/walnut-log` and independent backend destination `/servers/calcium-workflow/` are unchanged. Only frontend assets are uploaded to COS. On the server, update the process launcher to the Calcit command above; the workflow uploads source files, not a process configuration or runtime binary.
 
