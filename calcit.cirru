@@ -310,10 +310,10 @@
                       :font-style :italic
                     <> |Empty
                   div ({})
-                    list-> ({})
+                    keyed-> ({})
                       map log-ids $ fn (id)
-                        hint-fn $ Fn String $ -> (List Dynamic)
-                        [] id $ comp-log (>> states id) (:id issue)
+                        hint-fn $ Fn String $ -> respo.schema/ChildPair
+                        keyed-component id $ comp-log (>> states id) (:id issue)
                           .unwrap $ get logs id
                 .render content-plugin
                 .render desc-plugin
@@ -392,7 +392,7 @@
           :require
             respo-ui.core :refer $ hsl
             respo-ui.core :as ui
-            respo.core :refer $ defcomp <> >> div span button input list-> pre a
+            respo.core :refer $ defcomp <> >> div span button input keyed-> keyed-component pre a
             respo.comp.inspect :refer $ comp-inspect
             respo.comp.space :refer $ space-x space-y
             app.comp.navigation :refer $ comp-navigation
@@ -427,10 +427,10 @@
                 {} $ :style ui/column
                 div $ {} $ :style ui/row-parted
                 space-y 8
-                list-> ({})
+                keyed-> ({})
                   map ids $ fn (id)
-                    hint-fn $ Fn String $ -> (List Dynamic)
-                    [] id $ comp-issue (>> states id)
+                    hint-fn $ Fn String $ -> respo.schema/ChildPair
+                    keyed-component id $ comp-issue (>> states id)
                       .unwrap $ get issues id
           :examples $ []
           :schema $ quote $ Fn (Map Dynamic Dynamic) (Map String app.schema/Issue) (-> respo.schema/Component) (:features :js-ffi)
@@ -488,10 +488,10 @@
                       , &unit
                   span $ {}
                 space-y 8
-                list-> ({})
+                keyed-> ({})
                   map ids $ fn (id)
-                    hint-fn $ Fn String $ -> (List Dynamic)
-                    [] id $ comp-issue (>> states id)
+                    hint-fn $ Fn String $ -> respo.schema/ChildPair
+                    keyed-component id $ comp-issue (>> states id)
                       .unwrap $ get issues id
                 .render add-plugin
           :examples $ []
@@ -528,7 +528,7 @@
           :require
             respo-ui.core :refer $ hsl
             respo-ui.core :as ui
-            respo.core :refer $ defcomp <> >> div span button input pre list-> a
+            respo.core :refer $ defcomp <> >> div span button input pre keyed-> keyed-component a
             respo.comp.space :refer $ space-x space-y
             app.schema :as schema
             app.config :as config
@@ -689,15 +689,15 @@
                 {} $ :style ui/row
                 <> |Members:
                 space-x 8
-                list->
+                keyed->
                   {} $ :style ui/row
                   map
                     .to-list $ keys members
                     fn (k)
-                      hint-fn $ Fn Number $ -> (List Dynamic)
+                      hint-fn $ Fn Number $ -> respo.schema/ChildPair
                       let
                           username $ .unwrap $ get members k
-                        [] k $ div
+                        keyed-element k $ div
                           {} $ :style $ {} (:padding "|0 8px")
                             :border $ str "|1px solid " $ hsl 0 0 80
                             :border-radius |16px
@@ -738,7 +738,7 @@
             respo.util.format :refer $ hsl
             app.schema :as schema
             respo-ui.core :as ui
-            respo.core :refer $ defcomp list-> <> span div button
+            respo.core :refer $ defcomp keyed-> keyed-element <> span div button
             respo.comp.space :refer $ space-x space-y
             app.config :as config
             js-ffi.browser :as browser
