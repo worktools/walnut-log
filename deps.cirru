@@ -1,5 +1,5 @@
 
-{} (:calcit-version |0.40.0) (:version |0.0.1)
+{} (:calcit-version |0.41.0) (:version |0.0.1)
   :dependencies $ {}
     |calcit-lang/memof |0.0.49
     |calcit-lang/recollect |0.3.4
@@ -14,5 +14,5 @@
     |Respo/alerts.calcit |0.14.3
     |Respo/respo-markdown.calcit |0.8.2
     |calcit-lang/calcit-wss |0.2.44
-    |calcit-lang/calcit.std |0.2.53
+    |calcit-lang/calcit.std |0.2.55
     |Respo/reel.calcit |0.11.0
