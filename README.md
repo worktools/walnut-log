@@ -2,10 +2,10 @@
 
 > Some logs...
 
-### 0.40.0 升级对使用者的影响
+### 0.41.0 升级对使用者的影响
 
 请一并更新前端和后端。后端部署目录仍为 `/servers/calcium-workflow/`，启动命令为
-`calcit --entry server`。先在服务器安装 Calcit 0.40.0 和配套 native 模块，再按原流程重启。
+`calcit --entry server`。先在服务器安装 Calcit 0.41.0 和配套 native 模块，再按原流程重启。
 现有存档和 WebSocket 数据格式保持兼容。页面事件使用 `RespoEvent`，状态路径使用
 Respo 的 `CoordKey` 联合类型。
 
@@ -13,7 +13,7 @@ Respo 的 `CoordKey` 联合类型。
 
 - Frontend
 
-Use the released Calcit/procs 0.40.0, Caps 0.1.1, Node.js 24 and Yarn 4.18.0. The source and module manifest are `calcit.cirru` and `deps.cirru`; retired snapshot files are not used.
+Use the released Calcit/procs 0.41.0, Caps 0.1.1, Node.js 24 and Yarn 4.18.0. The source and module manifest are `calcit.cirru` and `deps.cirru`; retired snapshot files are not used.
 
 Build the page into `dist/`:
 
