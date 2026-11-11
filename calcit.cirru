@@ -893,7 +893,7 @@
                   Op :issue/add-log $ AddLog :issue-id |i1 :content |answer
                   , 1 |l1 4
                 session $ .unwrap $ get (:sessions logged) 1
-                view $ app.twig.container/twig-container logged session $ []
+                view $ app.twig.container/twig-container logged session 0
                 receive $ fn (base packet)
                   hint-fn $ Fn (Option app.schema/ClientStore) app.schema/ServerPacket $ -> (Result app.schema/ClientStore String)
                   match
@@ -1628,6 +1628,7 @@
             let
                 db $ :db reel
                 complete? $ ref true
+                reel-length $ .len $ :records reel
               .each
                 .to-list $ .keys $ :sessions db
                 fn (sid)
@@ -1635,7 +1636,7 @@
                   let
                       session $ .unwrap $ get (:sessions db) sid
                       old-store $ get @*client-caches sid
-                      new-store $ twig-container db session $ :records reel
+                      new-store $ twig-container db session reel-length
                       changes $ match old-store
                         (:some value)
                           diff-twig value new-store $ {} $ :key :id
@@ -1670,7 +1671,7 @@
     'app.twig.container $ %{} 'FileEntry
       :defs $ {}
         'twig-container $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn twig-container (db session records)
+          :code $ quote $ defn twig-container (db session reel-length)
             let
                 user $ match (:user-id session)
                   (:none) None
@@ -1700,27 +1701,26 @@
                   count $ :sessions db
                   , :color
                     if logged-in? (rand-hex-color!) |
-                    , :reel-length $ count records
+                    , :reel-length reel-length
           :examples $ []
-          :schema $ quote $ Fn schema/Db schema/Session
-            List $ List Dynamic
-            -> schema/ClientStore
+          :schema $ quote $ Fn schema/Db schema/Session Number (-> schema/ClientStore)
           :tests $ [] $ %{} 'TestEntry (:name |projects-private-user-and-route-data)
             :code $ quote $ let
                 connected $ app.updater/updater schema/database (schema/Op :session/connect) 1 |c1 0
                 registered $ app.updater/updater connected (schema/Op :user/sign-up |demo |pw) 1 |u1 1
                 added $ app.updater/updater registered (schema/Op :issue/add |question) 1 |i1 2
                 session $ .unwrap $ get (:sessions added) 1
-                view $ twig-container added session $ []
+                view $ twig-container added session 3
                 projected-user $ .unwrap $ :user view
                 solved $ app.updater/updater added (schema/Op :issue/toggle-solved |i1) 1 |solve 3
                 archived-route $ struct-with schema/router $ :name :archived
                 archived-db $ app.updater/updater solved (schema/Op :router/change archived-route) 1 |route 4
                 archived-view $ twig-container archived-db
                   .unwrap $ get (:sessions archived-db) 1
-                  []
-                guest-view $ twig-container added schema/session $ []
+                  , 0
+                guest-view $ twig-container added schema/session 0
               assert= true $ :logged-in? view
+              assert= 3 $ :reel-length view
               assert= |demo $ :name projected-user
               assert= false $ contains-field? projected-user :password
               match
