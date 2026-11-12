@@ -1028,14 +1028,7 @@
                       hint-fn $ Fn String Dynamic $ ->
                         MapEntryDecision String $ Map Tag Dynamic
                       MapEntryDecision :keep key $ user-input value
-                  issues $ filter-map-kv
-                    decode-map-as
-                      .unwrap-or (get source :issues) ({})
-                      Map String Dynamic
-                    fn (key value)
-                      hint-fn $ Fn String Dynamic $ ->
-                        MapEntryDecision String $ Map Tag Dynamic
-                      MapEntryDecision :keep key $ issue-input value
+                  issues $ issue-map-input $ .unwrap-or (get source :issues) ({})
                 try-decode-map-as
                   assoc
                     assoc (assoc source :sessions sessions) :users users
@@ -1104,15 +1097,13 @@
           :code $ quote $ defn decode-page (value)
             match value
               (:home issues)
-                Page :home $ decode-map-as (issue-map-input issues) (Map String app.schema/Issue)
+                Page :home $ issue-map-input issues
               (:archived issues)
-                Page :archived $ decode-map-as (issue-map-input issues) (Map String app.schema/Issue)
+                Page :archived $ issue-map-input issues
               (:issue issue)
-                Page :issue $ decode-map-as
-                  .map
-                    decode-map-as issue $ Option Dynamic
-                    , issue-input
-                  Option app.schema/Issue
+                Page :issue $ .map
+                  decode-map-as issue $ Option Dynamic
+                  , issue-input
               (:profile members)
                 Page :profile $ decode-map-as members $ Map Number (Option String)
               (:unknown) (Page :unknown)
@@ -1203,26 +1194,26 @@
                     .unwrap-or (get source :logs) ({})
                     Map String Dynamic
                   fn (key value)
-                    hint-fn $ Fn String Dynamic $ ->
-                      MapEntryDecision String $ Map Tag Dynamic
+                    hint-fn $ Fn String Dynamic $ -> (MapEntryDecision String Log)
                     MapEntryDecision :keep key $ log-input value
-              assoc
-                assoc source :author-id $ optional-input $ get source :author-id
-                , :logs logs
+              decode-map-as
+                assoc
+                  assoc source :author-id $ optional-input $ get source :author-id
+                  , :logs logs
+                , Issue
           :examples $ []
-          :schema $ quote $ Fn Dynamic
-            -> $ Map Tag Dynamic
+          :schema $ quote $ Fn Input (-> Issue) (:generics Input)
         'issue-map-input $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn issue-map-input (value)
             filter-map-kv
               decode-map-as value $ Map String Dynamic
               fn (key item)
-                hint-fn $ Fn String Dynamic $ ->
-                  MapEntryDecision String $ Map Tag Dynamic
+                hint-fn $ Fn String Dynamic $ -> (MapEntryDecision String Issue)
                 MapEntryDecision :keep key $ issue-input item
           :examples $ []
-          :schema $ quote $ Fn Dynamic
-            -> $ Map String $ Map Tag Dynamic
+          :schema $ quote $ Fn Input
+            -> $ Map String Issue
+            :generics Input
         'log $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def log
             Log :id | :content | :user-id None :created-time 0 :solution? false
@@ -1232,10 +1223,11 @@
           :code $ quote $ defn log-input (value)
             let
                 source $ struct-input value
-              assoc source :user-id $ optional-input $ get source :user-id
+              decode-map-as
+                assoc source :user-id $ optional-input $ get source :user-id
+                , Log
           :examples $ []
-          :schema $ quote $ Fn Dynamic
-            -> $ Map Tag Dynamic
+          :schema $ quote $ Fn Input (-> Log) (:generics Input)
         'optional-input $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn optional-input (input)
             match input
