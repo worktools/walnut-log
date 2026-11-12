@@ -36,10 +36,10 @@
                 if config/dev? (str |ws:// host |: port) (str |wss:// host |/ws)
                 {} (:class-mapper schema/wire-classes)
                   :on-open $ fn (event)
-                    hint-fn $ Fn Dynamic $ -> Unit
+                    hint-fn $ Fn JsObject $ -> Unit
                     simulate-login!
                   :on-close $ fn (event)
-                    hint-fn $ Fn Dynamic $ -> Unit
+                    hint-fn $ Fn JsObject $ -> Unit
                     reset! *store None
                     shared/console-error! "|Lost connection!"
                   :on-data on-server-data
@@ -61,7 +61,7 @@
             render-app!
             connect!
             add-watch! *store :changes $ fn (store prev)
-              hint-fn $ Fn (Option app.schema/ClientStore) (Option app.schema/ClientStore) (-> Unit)
+              hint-fn $ Fn (Option schema/ClientStore) (Option schema/ClientStore) (-> Unit)
               render-app!
             add-watch! *states :changes $ fn (states prev)
               hint-fn $ Fn (Map Tag Dynamic) (Map Tag Dynamic) (-> Unit)
@@ -94,7 +94,7 @@
             if (nil? client-errors)
               do (hud! |inactive nil) (remove-watch! *store :changes) (remove-watch! *states :changes) (clear-cache!) (render-app!)
                 add-watch! *store :changes $ fn (store prev)
-                  hint-fn $ Fn (Option app.schema/ClientStore) (Option app.schema/ClientStore) (-> Unit)
+                  hint-fn $ Fn (Option schema/ClientStore) (Option schema/ClientStore) (-> Unit)
                   render-app!
                 add-watch! *states :changes $ fn (states prev)
                   hint-fn $ Fn (Map Tag Dynamic) (Map Tag Dynamic) (-> Unit)
@@ -179,7 +179,7 @@
                     messages $ filter-map-kv
                       :messages $ :session store
                       fn (id message)
-                        hint-fn $ Fn String app.schema/Message $ ->
+                        hint-fn $ Fn String schema/Message $ ->
                           MapEntryDecision String $ Map Tag Dynamic
                         MapEntryDecision :keep id $ {}
                           :id $ :id message
@@ -895,7 +895,7 @@
                 session $ .unwrap $ get (:sessions logged) 1
                 view $ app.twig.container/twig-container logged session 0
                 receive $ fn (base packet)
-                  hint-fn $ Fn (Option app.schema/ClientStore) app.schema/ServerPacket $ -> (Result app.schema/ClientStore String)
+                  hint-fn $ Fn (Option ClientStore) ServerPacket $ -> (Result ClientStore String)
                   match
                     decode-server-packet $ parse-cirru-edn (format-cirru-edn packet) wire-classes
                     (:err detail) (Result :err detail)
@@ -1002,7 +1002,7 @@
                             .unwrap $ get source :reel-length
                             , 'Number
               fn (detail)
-                hint-fn $ Fn String $ -> (Result app.schema/ClientStore String)
+                hint-fn $ Fn String $ -> (Result ClientStore String)
                 Result :err detail
           :examples $ []
           :schema $ quote $ Fn Dynamic
@@ -1042,7 +1042,7 @@
                     , :issues issues
                   , 'app.schema/Db
               fn (detail)
-                hint-fn $ Fn String $ -> (Result app.schema/Db String)
+                hint-fn $ Fn String $ -> (Result Db String)
                 Result :err detail
           :examples $ []
           :schema $ quote $ Fn Dynamic
@@ -1095,7 +1095,7 @@
                     _ $ raise "|Unknown Walnut operation"
                 Result :err "|Expected an operation enum"
               fn (detail)
-                hint-fn $ Fn String $ -> (Result app.schema/Op String)
+                hint-fn $ Fn String $ -> (Result Op String)
                 Result :err detail
           :examples $ []
           :schema $ quote $ Fn Dynamic
@@ -1161,7 +1161,7 @@
                     Result :ok $ UiAction :remote op
                   (:err detail) (Result :err detail)
               fn (detail)
-                hint-fn $ Fn String $ -> (Result app.schema/UiAction String)
+                hint-fn $ Fn String $ -> (Result UiAction String)
                 Result :err detail
           :examples $ []
           :schema $ quote $ Fn Dynamic
@@ -1253,7 +1253,7 @@
                   Result :ok $ Auth :auth (decode-map-as username 'String) (decode-map-as password 'String)
                 _ $ Result :err "|Invalid saved authentication data"
               fn (detail)
-                hint-fn $ Fn String $ -> (Result app.schema/Auth String)
+                hint-fn $ Fn String $ -> (Result Auth String)
                 Result :err "|Invalid saved authentication data"
           :examples $ []
           :schema $ quote $ Fn String
@@ -1271,7 +1271,7 @@
             try
               decode-database $ parse-cirru-edn text wire-classes
               fn (detail)
-                hint-fn $ Fn String $ -> (Result app.schema/Db String)
+                hint-fn $ Fn String $ -> (Result Db String)
                 Result :err detail
           :examples $ []
           :schema $ quote $ Fn String
@@ -1333,7 +1333,7 @@
             try
               decode-op $ parse-cirru-edn text wire-classes
               fn (detail)
-                hint-fn $ Fn String $ -> (Result app.schema/Op String)
+                hint-fn $ Fn String $ -> (Result Op String)
                 Result :err detail
           :examples $ []
           :schema $ quote $ Fn String
@@ -1610,7 +1610,7 @@
         'stop-tasks! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn stop-tasks! ()
             .each @*tasks $ fn (task)
-              hint-fn $ Fn calcit.core/FfiTask $ -> Unit
+              hint-fn $ Fn FfiTask $ -> Unit
               .cancel! task
             reset! *tasks $ []
             , &unit
@@ -1748,7 +1748,7 @@
         'twig-members $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn twig-members (sessions users)
             filter-map-kv sessions $ fn (sid session)
-              hint-fn $ Fn Number app.schema/Session $ ->
+              hint-fn $ Fn Number schema/Session $ ->
                 MapEntryDecision Number $ Option String
               MapEntryDecision :keep sid $ match (:user-id session)
                 (:none) None

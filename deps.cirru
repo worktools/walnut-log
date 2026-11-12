@@ -1,5 +1,5 @@
 
-{} (:calcit-version |0.41.0) (:version |0.0.1)
+{} (:calcit-version |0.41.1) (:version |0.0.1)
   :dependencies $ {}
     |calcit-lang/memof |0.0.49
     |calcit-lang/recollect |0.3.4
