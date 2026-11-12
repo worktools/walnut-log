@@ -44,7 +44,7 @@
                     shared/console-error! "|Lost connection!"
                   :on-data on-server-data
           :examples $ []
-          :schema $ quote $ Fn (-> ws-edn.client/WsClient)
+          :schema $ quote $ Fn (-> ws-edn.client/WsClient) (:features :io :state)
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (op)
             match op
@@ -54,7 +54,7 @@
               _ $ ws-send! op
             , &unit
           :examples $ []
-          :schema $ quote $ Fn schema/Op (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn schema/Op (-> Unit) (:features :io :js-ffi :state)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             println "|Running mode:" $ if config/dev? |dev |release
@@ -69,7 +69,7 @@
             println "|App started!"
             , &unit
           :examples $ []
-          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn (-> Unit) (:features :io :js-ffi :state)
         'mount-target $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn mount-target ()
             narrow-element $ .unwrap $ browser/query-selector |.app
@@ -88,7 +88,7 @@
                     (:err detail) (eprintln "|Rejected store patch:" detail)
             , &unit
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> Unit)
+          :schema $ quote $ Fn Dynamic (-> Unit) (:features :io :state)
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! ()
             if (nil? client-errors)
@@ -103,7 +103,7 @@
               hud! |error client-errors
             , &unit
           :examples $ []
-          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn (-> Unit) (:features :io :js-ffi :state)
         'render-app! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-app! ()
             render-with! (mount-target)
@@ -114,7 +114,7 @@
                 , @*store
               , dispatch!
           :examples $ []
-          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn (-> Unit) (:features :io :js-ffi :state)
         'simulate-login! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn simulate-login! ()
             match
@@ -129,7 +129,7 @@
                       ws-send! $ schema/Op :user/log-in username password
             , &unit
           :examples $ []
-          :schema $ quote $ Fn (-> Unit)
+          :schema $ quote $ Fn (-> Unit) (:features :io)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.client
           :require
@@ -1131,7 +1131,7 @@
                     decode-page $ .unwrap $ get source :data
                     , :router $ decode-map-as nested $ Option app.schema/Router
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> RouterView)
+          :schema $ quote $ Fn Input (-> RouterView) (:generics Input)
         'decode-server-packet $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn decode-server-packet (value) (try-decode-map-as value 'app.schema/ServerPacket)
           :examples $ []
@@ -1401,16 +1401,18 @@
                   , :router $ router-input $ .unwrap (get source :router)
                 , :messages messages
           :examples $ []
-          :schema $ quote $ Fn Dynamic
+          :schema $ quote $ Fn Input
             -> $ Map Tag Dynamic
+            :generics Input
         'struct-input $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn struct-input (value)
             decode-map-as
               if (struct? value) (&struct:to-map value) value
               Map Tag Dynamic
           :examples $ []
-          :schema $ quote $ Fn Dynamic
+          :schema $ quote $ Fn Input
             -> $ Map Tag Dynamic
+            :generics Input
         'user $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def user
             User :id | :name | :password | :nickname None :avatar None
@@ -1424,8 +1426,9 @@
                 assoc source :nickname $ optional-input $ get source :nickname
                 , :avatar $ optional-input $ get source :avatar
           :examples $ []
-          :schema $ quote $ Fn Dynamic
+          :schema $ quote $ Fn Input
             -> $ Map Tag Dynamic
+            :generics Input
         'wire-classes $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def wire-classes
             {} (:Option Option) (:Op Op) (:Db database) (:Session session) (:Router router) (:User user) (:Issue issue) (:Log log)
@@ -1486,7 +1489,7 @@
                 _ $ reset! *reel $ reel-reducer @*reel updater op sid op-id op-time config/dev?
               , &unit
           :examples $ []
-          :schema $ quote $ Fn schema/Op Number (-> Unit)
+          :schema $ quote $ Fn schema/Op Number (-> Unit) (:features :io :state)
         'get-backup-path! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn get-backup-path! ()
             let
@@ -1520,11 +1523,11 @@
               println $ str "|Server started on port:" port
             , &unit
           :examples $ []
-          :schema $ quote $ Fn (-> Unit)
+          :schema $ quote $ Fn (-> Unit) (:features :io :state)
         'on-exit! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn on-exit! () (stop-tasks!) (persist-db!) (quit! 0)
           :examples $ []
-          :schema $ quote $ Fn (-> Unit)
+          :schema $ quote $ Fn (-> Unit) (:features :io :state)
         'persist-db! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn persist-db! ()
             let
@@ -1536,7 +1539,7 @@
               check-write-file! backup-path file-content
               , &unit
           :examples $ []
-          :schema $ quote $ Fn (-> Unit)
+          :schema $ quote $ Fn (-> Unit) (:features :state)
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! () (println "|Code updated..")
             if (not config/dev?) (raise "|reloading only happens in dev mode")
@@ -1545,7 +1548,7 @@
             render-loop!
             , &unit
           :examples $ []
-          :schema $ quote $ Fn (-> Unit)
+          :schema $ quote $ Fn (-> Unit) (:features :io :state)
         'render-loop! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-loop! ()
             let
@@ -1555,7 +1558,7 @@
                 when (sync-clients! snapshot) (reset! *reader-reel snapshot)
             , &unit
           :examples $ []
-          :schema $ quote $ Fn (-> Unit)
+          :schema $ quote $ Fn (-> Unit) (:features :io :state)
         'replay-updater $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn replay-updater (db op sid op-id op-time)
             match (schema/decode-op op)
@@ -1564,7 +1567,7 @@
               (:ok decoded)
                 updater db decoded (decode-map-as sid 'Number) (decode-map-as op-id 'String) (decode-map-as op-time 'Number)
           :examples $ []
-          :schema $ quote $ Fn schema/Db Dynamic Dynamic Dynamic Dynamic (-> schema/Db)
+          :schema $ quote $ Fn schema/Db Dynamic Dynamic Dynamic Dynamic (-> schema/Db) (:features :io)
           :tests $ [] $ %{} 'TestEntry (:name |replays-typed-business-records)
             :code $ quote $ let
                 base schema/database
@@ -1598,7 +1601,7 @@
                   (:blob sid _) (eprintln "|Ignoring binary client packet:" sid)
                 , &unit
           :examples $ []
-          :schema $ quote $ Fn Number (-> FfiTask)
+          :schema $ quote $ Fn Number (-> FfiTask) (:features :io :state)
         'stop-tasks! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn stop-tasks! ()
             .each @*tasks $ fn (task)
@@ -1607,7 +1610,7 @@
             reset! *tasks $ []
             , &unit
           :examples $ []
-          :schema $ quote $ Fn (-> Unit)
+          :schema $ quote $ Fn (-> Unit) (:features :state)
         'storage-file $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def storage-file
             if (empty? calcit-dirname)
@@ -1643,7 +1646,7 @@
                     , &unit
               , @complete?
           :examples $ []
-          :schema $ quote $ Fn (ReelState schema/Db) (-> Bool)
+          :schema $ quote $ Fn (ReelState schema/Db) (-> Bool) (:features :io :state)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.server
           :require (app.schema :as schema)
@@ -1792,7 +1795,7 @@
               (:states cursor state) db
               (:effect/connect) db
           :examples $ []
-          :schema $ quote $ Fn schema/Db schema/Op Number String Number (-> schema/Db)
+          :schema $ quote $ Fn schema/Db schema/Op Number String Number (-> schema/Db) (:features :io)
           :tests $ []
             %{} 'TestEntry (:name |issue-and-log-editing)
               :code $ quote $ let
@@ -1866,11 +1869,11 @@
         'del-issue $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn del-issue (db op-data sid op-id op-time) (println |todo) db
           :examples $ []
-          :schema $ quote $ Fn schema/Db String Number String Number (-> schema/Db)
+          :schema $ quote $ Fn schema/Db String Number String Number (-> schema/Db) (:features :io)
         'del-issue-log $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn del-issue-log (db op-data sid op-id op-time) (println |TODO) db
           :examples $ []
-          :schema $ quote $ Fn schema/Db schema/LogRef Number String Number (-> schema/Db)
+          :schema $ quote $ Fn schema/Db schema/LogRef Number String Number (-> schema/Db) (:features :io)
         'toggle-solved $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn toggle-solved (db issue-id sid op-id op-time)
             match
@@ -1884,7 +1887,7 @@
         'touch-issue $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn touch-issue (db op-data sid op-id op-time) (println |TODO) db
           :examples $ []
-          :schema $ quote $ Fn schema/Db String Number String Number (-> schema/Db)
+          :schema $ quote $ Fn schema/Db String Number String Number (-> schema/Db) (:features :io)
         'update-issue $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn update-issue (db data sid op-id op-time)
             match
