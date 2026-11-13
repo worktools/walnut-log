@@ -1091,8 +1091,9 @@
                 hint-fn $ Fn String $ -> (Result Op String)
                 Result :err detail
           :examples $ []
-          :schema $ quote $ Fn Dynamic
+          :schema $ quote $ Fn Input
             -> $ Result Op String
+            :generics Input
         'decode-page $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn decode-page (value)
             match value
@@ -1135,8 +1136,9 @@
         'decode-server-packet $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn decode-server-packet (value) (try-decode-map-as value 'app.schema/ServerPacket)
           :examples $ []
-          :schema $ quote $ Fn Dynamic
+          :schema $ quote $ Fn Input
             -> $ Result ServerPacket String
+            :generics Input
         'decode-ui-action $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn decode-ui-action (value)
             try
@@ -1155,8 +1157,9 @@
                 hint-fn $ Fn String $ -> (Result UiAction String)
                 Result :err detail
           :examples $ []
-          :schema $ quote $ Fn Dynamic
+          :schema $ quote $ Fn Input
             -> $ Result UiAction String
+            :generics Input
           :tests $ [] $ %{} 'TestEntry (:name |respo-operation-boundary)
             :code $ quote $ do
               assert=
