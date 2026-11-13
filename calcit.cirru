@@ -1186,8 +1186,9 @@
                 assoc source :content $ optional-input $ get source :content
                 , :desc $ optional-input $ get source :desc
           :examples $ []
-          :schema $ quote $ Fn Dynamic
+          :schema $ quote $ Fn Input
             -> $ Map Tag Dynamic
+            :generics Input
         'issue-input $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn issue-input (value)
             let
@@ -1238,7 +1239,7 @@
               (:some value)
                 if (nil? value) None value
           :examples $ []
-          :schema $ quote $ Fn (Option Dynamic) (-> Dynamic)
+          :schema $ quote $ Fn (Option Input) (-> Dynamic) (:generics Input)
         'parse-auth $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn parse-auth (text)
             try
@@ -1375,8 +1376,9 @@
                       , nested
                     , nested
           :examples $ []
-          :schema $ quote $ Fn Dynamic
+          :schema $ quote $ Fn Input
             -> $ Map Tag Dynamic
+            :generics Input
         'session $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def session
             Session :id None :user-id None :nickname None :router router :messages $ {}
