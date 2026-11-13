@@ -1574,7 +1574,7 @@
               (:ok decoded)
                 updater db decoded (decode-map-as sid 'Number) (decode-map-as op-id 'String) (decode-map-as op-time 'Number)
           :examples $ []
-          :schema $ quote $ Fn schema/Db Dynamic Dynamic Dynamic Dynamic (-> schema/Db) (:features :io)
+          :schema $ quote $ Fn schema/Db Operation SessionId OperationId Timestamp (-> schema/Db) (:generics Operation SessionId OperationId Timestamp) (:features :io)
           :tests $ [] $ %{} 'TestEntry (:name |replays-typed-business-records)
             :code $ quote $ let
                 base schema/database
