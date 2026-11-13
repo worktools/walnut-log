@@ -1005,8 +1005,9 @@
                 hint-fn $ Fn String $ -> (Result ClientStore String)
                 Result :err detail
           :examples $ []
-          :schema $ quote $ Fn Dynamic
+          :schema $ quote $ Fn Input
             -> $ Result ClientStore String
+            :generics Input
         'decode-database $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn decode-database (value)
             try
@@ -1038,8 +1039,9 @@
                 hint-fn $ Fn String $ -> (Result Db String)
                 Result :err detail
           :examples $ []
-          :schema $ quote $ Fn Dynamic
+          :schema $ quote $ Fn Input
             -> $ Result Db String
+            :generics Input
         'decode-op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn decode-op (value)
             try
@@ -1110,7 +1112,7 @@
               (:unknown) (Page :unknown)
               _ $ raise "|Unknown client page projection"
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> Page)
+          :schema $ quote $ Fn Input (-> Page) (:generics Input)
         'decode-router-view $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn decode-router-view (value)
             let
