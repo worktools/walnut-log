@@ -88,7 +88,7 @@
                     (:err detail) (eprintln "|Rejected store patch:" detail)
             , &unit
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> Unit) (:features :io :state)
+          :schema $ quote $ Fn Packet (-> Unit) (:generics Packet) (:features :io :state)
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! ()
             if (nil? client-errors)
@@ -1005,8 +1005,9 @@
                 hint-fn $ Fn String $ -> (Result ClientStore String)
                 Result :err detail
           :examples $ []
-          :schema $ quote $ Fn Dynamic
+          :schema $ quote $ Fn Input
             -> $ Result ClientStore String
+            :generics Input
         'decode-database $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn decode-database (value)
             try
@@ -1038,8 +1039,9 @@
                 hint-fn $ Fn String $ -> (Result Db String)
                 Result :err detail
           :examples $ []
-          :schema $ quote $ Fn Dynamic
+          :schema $ quote $ Fn Input
             -> $ Result Db String
+            :generics Input
         'decode-op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn decode-op (value)
             try
@@ -1110,7 +1112,7 @@
               (:unknown) (Page :unknown)
               _ $ raise "|Unknown client page projection"
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> Page)
+          :schema $ quote $ Fn Input (-> Page) (:generics Input)
         'decode-router-view $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn decode-router-view (value)
             let
@@ -1186,8 +1188,9 @@
                 assoc source :content $ optional-input $ get source :content
                 , :desc $ optional-input $ get source :desc
           :examples $ []
-          :schema $ quote $ Fn Dynamic
+          :schema $ quote $ Fn Input
             -> $ Map Tag Dynamic
+            :generics Input
         'issue-input $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn issue-input (value)
             let
@@ -1238,7 +1241,7 @@
               (:some value)
                 if (nil? value) None value
           :examples $ []
-          :schema $ quote $ Fn (Option Dynamic) (-> Dynamic)
+          :schema $ quote $ Fn (Option Input) (-> Dynamic) (:generics Input)
         'parse-auth $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn parse-auth (text)
             try
@@ -1375,8 +1378,9 @@
                       , nested
                     , nested
           :examples $ []
-          :schema $ quote $ Fn Dynamic
+          :schema $ quote $ Fn Input
             -> $ Map Tag Dynamic
+            :generics Input
         'session $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def session
             Session :id None :user-id None :nickname None :router router :messages $ {}
@@ -1570,7 +1574,7 @@
               (:ok decoded)
                 updater db decoded (decode-map-as sid 'Number) (decode-map-as op-id 'String) (decode-map-as op-time 'Number)
           :examples $ []
-          :schema $ quote $ Fn schema/Db Dynamic Dynamic Dynamic Dynamic (-> schema/Db) (:features :io)
+          :schema $ quote $ Fn schema/Db Operation SessionId OperationId Timestamp (-> schema/Db) (:generics Operation SessionId OperationId Timestamp) (:features :io)
           :tests $ [] $ %{} 'TestEntry (:name |replays-typed-business-records)
             :code $ quote $ let
                 base schema/database
