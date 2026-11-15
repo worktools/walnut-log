@@ -1,7 +1,6 @@
 
 {} (:calcit-version |0.42.1) (:version |0.0.1)
   :dependencies $ {}
-    |calcit-lang/memof |0.0.49
     |calcit-lang/recollect |0.3.4
     |calcit-lang/js-ffi |0.2.13
     |Respo/respo.calcit |0.19.5
