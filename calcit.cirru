@@ -129,7 +129,7 @@
                       ws-send! $ schema/Op :user/log-in username password
             , &unit
           :examples $ []
-          :schema $ quote $ Fn (-> Unit) (:features :io)
+          :schema $ quote $ Fn (-> Unit) (:features :io :state)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.client
           :require
@@ -168,7 +168,7 @@
                     , &unit
                 .render add-plugin
           :examples $ []
-          :schema $ quote $ Fn (Map Dynamic Dynamic) String (-> respo.schema/Component) (:features :js-ffi)
+          :schema $ quote $ Fn (Map Dynamic Dynamic) String (-> respo.schema/Component) (:features :io :js-ffi :state)
         'comp-container $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-container (states connection)
             match connection
@@ -238,7 +238,7 @@
                       Some $ comp-reel (:reel-length store) ({})
                       , None
           :examples $ []
-          :schema $ quote $ Fn (Map Dynamic Dynamic) (Option schema/ClientStore) (-> respo.schema/Component) (:features :js-ffi)
+          :schema $ quote $ Fn (Map Dynamic Dynamic) (Option schema/ClientStore) (-> respo.schema/Component) (:features :io :js-ffi :state)
         'comp-issue-page $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-issue-page (states issue)
             let
@@ -318,7 +318,7 @@
                 .render content-plugin
                 .render desc-plugin
           :examples $ []
-          :schema $ quote $ Fn (Map Dynamic Dynamic) schema/Issue (-> respo.schema/Component) (:features :js-ffi)
+          :schema $ quote $ Fn (Map Dynamic Dynamic) schema/Issue (-> respo.schema/Component) (:features :io :js-ffi :state)
         'comp-log $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-log (states issue-id log)
             let
@@ -353,7 +353,7 @@
                       , &unit
                 .render content-plugin
           :examples $ []
-          :schema $ quote $ Fn (Map Dynamic Dynamic) String schema/Log (-> respo.schema/Component) (:features :js-ffi)
+          :schema $ quote $ Fn (Map Dynamic Dynamic) String schema/Log (-> respo.schema/Component) (:features :io :js-ffi :state)
         'comp-offline $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-offline ()
             div
@@ -495,7 +495,7 @@
                       .unwrap $ get issues id
                 .render add-plugin
           :examples $ []
-          :schema $ quote $ Fn (Map Dynamic Dynamic) (Map String schema/Issue) (-> respo.schema/Component) (:features :js-ffi)
+          :schema $ quote $ Fn (Map Dynamic Dynamic) (Map String schema/Issue) (-> respo.schema/Component) (:features :io :js-ffi :state)
         'comp-solved-tag $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-solved-tag (solved?)
             div
