@@ -13,5 +13,5 @@
     |Respo/alerts.calcit |0.14.6
     |Respo/respo-markdown.calcit |0.9.3
     |calcit-lang/calcit-wss |0.2.45
-    |calcit-lang/calcit.std |0.2.57
+    |calcit-lang/calcit.std |0.2.58
     |Respo/reel.calcit |0.11.3
