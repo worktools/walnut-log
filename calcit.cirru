@@ -32,17 +32,12 @@
                 host $ .unwrap-or (get query |host) (:hostname location)
                 port $ .unwrap-or (get query |port)
                   str $ :port config/site
-              ws-connect!
+                opened $ fn (event) (simulate-login!) &unit
+                closed $ fn (event) (reset! *store None) (shared/console-error! "|Lost connection!") &unit
+              ws-edn.client/ws-connect-typed!
                 if config/dev? (str |ws:// host |: port) (str |wss:// host |/ws)
-                {} (:class-mapper schema/wire-classes)
-                  :on-open $ fn (event)
-                    hint-fn $ Fn JsObject $ -> Unit
-                    simulate-login!
-                  :on-close $ fn (event)
-                    hint-fn $ Fn JsObject $ -> Unit
-                    reset! *store None
-                    shared/console-error! "|Lost connection!"
-                  :on-data on-server-data
+                ws-edn.client/ClientConfig :retry-base-ms None :retry-max-ms None :retry-jitter None :heartbeat-timeout-ms None :class-mapper schema/wire-classes
+                ws-edn.client/ClientCallbacks :on-open (Some opened) :on-close (Some closed) :on-error None :on-data $ Some on-server-data
           :examples $ []
           :schema $ quote $ Fn (-> ws-edn.client/WsClient) (:features :io :state)
         'dispatch! $ %{} 'CodeEntry (:doc |)
