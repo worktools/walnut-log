@@ -6,9 +6,9 @@
 
 请一并更新前端和后端。后端部署目录仍为 `/servers/calcium-workflow/`，启动命令为
 `calcit --entry server`。先在服务器安装 Calcit 0.44.0 和 deps.cirru 指定的配套 native 模块，再按原流程重启。 标准库 0.2.58 和 WSS 0.2.46 须针对服务器架构构建。
-正式依赖图对齐 Cumulo Reel 0.3.8、WS-EDN 0.2.6 与 Recollect 0.3.10，前后端需配套更新。
+正式依赖图对齐 Cumulo Reel 0.3.9、WS-EDN 0.2.7 与 Recollect 0.3.10，前后端需配套更新。
 
-现有存档和 WebSocket 数据格式保持兼容。页面事件使用 `RespoEvent`，状态路径使用
+客户端使用按事件区分的类型化 WebSocket 回调。现有存档和 WebSocket 数据格式保持兼容。页面事件使用 `RespoEvent`，状态路径使用
 Respo 的 `CoordKey` 联合类型。
 
 ### Deployment
