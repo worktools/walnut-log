@@ -175,7 +175,7 @@
                       :messages $ :session store
                       fn (id message)
                         hint-fn $ Fn String schema/Message $ ->
-                          MapEntryDecision String $ Map Tag Dynamic
+                          MapEntryDecision String $ Map Tag String
                         MapEntryDecision :keep id $ {}
                           :id $ :id message
                           :text $ :text message
@@ -223,7 +223,7 @@
                       , None
                     comp-messages messages ({})
                       fn (info d!)
-                        hint-fn $ Fn (Map Dynamic Dynamic)
+                        hint-fn $ Fn (Map Tag Dynamic)
                           Fn *dispatch-op $ -> Unit
                           -> Unit
                         d! $ schema/Op :session/remove-message $ decode-map-as
