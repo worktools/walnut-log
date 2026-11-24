@@ -182,7 +182,7 @@
                   div
                     {} $ :style $ merge ui/global ui/fullscreen ui/column
                       {} $ :background-color $ hsl 0 0 96
-                    comp-navigation (>> states :nav) (:logged-in? store) (:count store)
+                    comp-navigation (:logged-in? store) (:count store)
                     div
                       {} $ :style ui/expand
                       div
@@ -609,7 +609,7 @@
     'app.comp.navigation $ %{} 'FileEntry
       :defs $ {}
         'comp-navigation $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defcomp comp-navigation (states logged-in? count-members)
+          :code $ quote $ defcomp comp-navigation (logged-in? count-members)
             div
               {} $ :style $ merge ui/row-middle
                 {} (:height 48) (:justify-content :space-between) (:padding "|0 16px") (:font-size 16)
@@ -641,7 +641,7 @@
                   space-x 8
                   <> $ str count-members
           :examples $ []
-          :schema $ quote $ Fn (Map Dynamic Dynamic) Bool Number (-> respo.schema/Component) (:features :js-ffi)
+          :schema $ quote $ Fn Bool Number (-> respo.schema/Component) (:features :js-ffi)
         'on-navigate $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn on-navigate (page)
             fn (e d!)
