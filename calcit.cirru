@@ -200,7 +200,7 @@
                               div
                                 {} $ :style $ merge ui/expand
                                   {} $ :padding |8px
-                                comp-archived-list (>> states :list) issues
+                                comp-archived-list issues
                                 space-y 100
                             (:issue selection)
                               div
@@ -411,7 +411,7 @@
             :names $ {} $ :format |format
           :schema $ quote Trait
         'comp-archived-list $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defcomp comp-archived-list (states issues)
+          :code $ quote $ defcomp comp-archived-list (issues)
             let
                 ids $ .sort-by
                   .to-list $ keys issues
@@ -425,12 +425,11 @@
                 keyed-> ({})
                   map ids $ fn (id)
                     hint-fn $ Fn String $ -> respo.schema/ChildPair
-                    keyed-component id $ comp-issue (>> states id)
-                      .unwrap $ get issues id
+                    keyed-component id $ comp-issue $ .unwrap (get issues id)
           :examples $ []
-          :schema $ quote $ Fn (Map Dynamic Dynamic) (Map String schema/Issue) (-> respo.schema/Component) (:features :js-ffi)
+          :schema $ quote $ Fn (Map String schema/Issue) (-> respo.schema/Component) (:features :js-ffi)
         'comp-issue $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defcomp comp-issue (states issue)
+          :code $ quote $ defcomp comp-issue (issue)
             div
               {} $ :style $ {} (:min-height 40)
                 :border-bottom $ str "|1px solid " $ hsl 0 0 94
@@ -454,7 +453,7 @@
                 space-x 16
                 comp-solved-tag $ :solved? issue
           :examples $ []
-          :schema $ quote $ Fn (Map Dynamic Dynamic) schema/Issue (-> respo.schema/Component) (:features :js-ffi)
+          :schema $ quote $ Fn schema/Issue (-> respo.schema/Component) (:features :js-ffi)
         'comp-issues-list $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-issues-list (states issues)
             let
@@ -486,8 +485,7 @@
                 keyed-> ({})
                   map ids $ fn (id)
                     hint-fn $ Fn String $ -> respo.schema/ChildPair
-                    keyed-component id $ comp-issue (>> states id)
-                      .unwrap $ get issues id
+                    keyed-component id $ comp-issue $ .unwrap (get issues id)
                 .render add-plugin
           :examples $ []
           :schema $ quote $ Fn (Map Dynamic Dynamic) (Map String schema/Issue) (-> respo.schema/Component) (:features :io :js-ffi :state)
